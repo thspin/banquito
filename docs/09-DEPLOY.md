@@ -10,9 +10,9 @@
 1. En el Dashboard, clic en "New +"
 2. Selecciona "PostgreSQL"
 3. Configura:
-   - **Name**: `tuli-db`
-   - **Database**: `tuli`
-   - **User**: `tuli_user`
+   - **Name**: `banquito-db`
+   - **Database**: `banquito`
+   - **User**: `banquito_user`
 4. Clic en "Create Database"
 5. Guarda el **Internal Database URL** (lo necesitarás después)
 
@@ -21,7 +21,7 @@
 2. Selecciona "Web Service"
 3. Conecta tu repositorio de GitHub
 4. Configura:
-   - **Name**: `tuli-api`
+   - **Name**: `banquito-api`
    - **Runtime**: `Python 3`
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
@@ -30,7 +30,7 @@
    DATABASE_URL=<Internal Database URL del paso anterior>
    APP_ENV=production
    DEBUG=false
-   FRONTEND_URL=https://tuli-web.vercel.app
+   FRONTEND_URL=https://banquito-web.vercel.app
    ```
 6. Clic en "Create Web Service"
 
@@ -60,7 +60,7 @@ O crea un script de inicio que lo haga automáticamente.
    - **Output Directory**: `dist`
 4. En "Environment Variables", agrega:
    ```
-   VITE_API_URL=https://tuli-api.onrender.com
+   VITE_API_URL=https://banquito-api.onrender.com
    ```
 5. Clic en "Deploy"
 
@@ -136,8 +136,8 @@ alembic upgrade head
 
 Una vez deployado, tus URLs serán:
 
-- **Backend**: `https://tuli-api.onrender.com`
-- **Frontend**: `https://tuli-web.vercel.app`
-- **API Docs**: `https://tuli-api.onrender.com/docs`
+- **Backend**: `https://banquito-api.onrender.com`
+- **Frontend**: `https://banquito-web.vercel.app`
+- **API Docs**: `https://banquito-api.onrender.com/docs`
 
 ¡Listo para usar en producción! 🎉
