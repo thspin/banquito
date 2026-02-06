@@ -64,6 +64,29 @@ class CategoryResponse(CategoryBase, TimestampSchema):
 
 ---
 
+### 5. Backend - Función `get_current_user_id()` ⚠️ **FIX CRÍTICO**
+**Problema**: La función retornaba `str` pero todos los endpoints esperaban `UUID`  
+**Solución**: Cambiar el tipo de retorno a `UUID` y convertir el string con `UUID()`
+
+```python
+from uuid import UUID  # ✅ Importado
+
+async def get_current_user_id() -> UUID:  # ✅ Cambiado de str a UUID
+    """
+    Get current user ID.
+    
+    For now, returns hardcoded user ID.
+    In the future, this will validate JWT token and return real user.
+    """
+    return UUID(settings.CURRENT_USER_ID)  # ✅ Convertido a UUID
+```
+
+**Archivo**: `backend/app/dependencies.py` (líneas 24-31)
+
+**⚠️ Este era el BUG PRINCIPAL** que causaba los errores al crear categorías. SQLAlchemy esperaba un objeto UUID pero recibía un string, causando errores de tipo
+
+---
+
 ## 🔧 Pasos para Deployar los Cambios
 
 ### 1. Commit y Push al Repositorio
@@ -145,9 +168,10 @@ Y que en `config.py` esté incluida esa URL en `ALLOWED_ORIGINS`.
 
 - ✅ `backend/app/routers/categories.py`
 - ✅ `backend/app/schemas/__init__.py`
+- ✅ `backend/app/dependencies.py` ⚠️ **CRÍTICO**
 - ✅ `frontend/src/api/categories.ts`
 
-**Total**: 3 archivos modificados
+**Total**: 4 archivos modificados
 
 ---
 
