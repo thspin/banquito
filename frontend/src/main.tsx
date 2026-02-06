@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+// Import safelist to ensure Tailwind includes all necessary classes
+import './tailwind-safelist';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
