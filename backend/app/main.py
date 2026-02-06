@@ -12,13 +12,37 @@ from app.config import settings
 from app.database import init_db
 
 
+async def ensure_demo_user():
+    """Ensure that the hardcoded demo user exists in the database."""
+    from app.database import AsyncSessionLocal
+    from app.models import User
+    from sqlalchemy import select
+    import uuid
+
+    async with AsyncSessionLocal() as db:
+        user_id = uuid.UUID(settings.CURRENT_USER_ID)
+        try:
+            result = await db.execute(select(User).where(User.id == user_id))
+            if not result.scalar_one_or_none():
+                print(f"👤 Creating demo user: {settings.CURRENT_USER_EMAIL}")
+                user = User(
+                    id=user_id,
+                    email=settings.CURRENT_USER_EMAIL,
+                    name="Usuario Demo"
+                )
+                db.add(user)
+                await db.commit()
+        except Exception as e:
+            print(f"⚠️ Could not ensure demo user: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
     print("🚀 Starting up Banquito API...")
-    # Initialize database tables (optional, migrations preferred)
-    # await init_db()
+    # Ensure demo user exists for a smooth experience
+    await ensure_demo_user()
     
     yield
     
