@@ -6,7 +6,7 @@ from app.config import settings
 
 # Create async engine
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.ASYNC_DATABASE_URL,
     echo=settings.DEBUG,  # Log SQL queries in debug mode
     future=True,
     poolclass=NullPool if settings.APP_ENV == "testing" else None,
