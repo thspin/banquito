@@ -1,6 +1,7 @@
 """Application dependencies for FastAPI."""
 
 from typing import AsyncGenerator
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,14 +22,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-async def get_current_user_id() -> str:
+async def get_current_user_id() -> UUID:
     """
     Get current user ID.
     
     For now, returns hardcoded user ID.
     In the future, this will validate JWT token and return real user.
     """
-    return settings.CURRENT_USER_ID
+    return UUID(settings.CURRENT_USER_ID)
 
 
 async def get_current_user():
