@@ -59,11 +59,11 @@ export default function Settings() {
     },
   });
 
-  const seedCategoriesMutation = useMutation({
+  const seedCategoriesMutation = useMutation<{ success: boolean; message: string }, Error>({
     mutationFn: categoriesApi.seedCategories,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      showToast(`Se crearon ${data.categories?.length || 0} categorías por defecto`, 'success');
+      showToast(data.message || 'Categorías creadas exitosamente', 'success');
     },
     onError: () => {
       showToast('Error al crear categorías por defecto', 'error');
