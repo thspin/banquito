@@ -32,7 +32,7 @@ export default function Accounts() {
   const handleCreateProduct = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     createProductMutation.mutate({
       name: formData.get('name') as string,
       product_type: formData.get('product_type') as ProductType,

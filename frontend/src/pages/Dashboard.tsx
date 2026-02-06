@@ -48,7 +48,7 @@ export default function Dashboard() {
       {/* Welcome Message */}
       <Card className="mt-8">
         <h2 className="text-xl font-semibold text-white mb-2">
-          Bienvenido a Tuli Finance
+          Bienvenido a Banquito
         </h2>
         <p className="text-white/70">
           Gestiona tus cuentas, transacciones y resúmenes de tarjetas de crédito.

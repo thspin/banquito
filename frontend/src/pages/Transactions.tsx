@@ -39,7 +39,7 @@ export default function Transactions() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     createMutation.mutate({
       amount: parseFloat(formData.get('amount') as string),
       date: formData.get('date') as string,
@@ -97,17 +97,15 @@ export default function Transactions() {
                     )}
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      tx.transaction_type === 'INCOME' 
+                    <span className={`px-2 py-1 rounded text-xs ${tx.transaction_type === 'INCOME'
                         ? 'bg-green-500/20 text-green-400'
                         : 'bg-red-500/20 text-red-400'
-                    }`}>
+                      }`}>
                       {transactionTypes[tx.transaction_type]}
                     </span>
                   </td>
-                  <td className={`py-3 px-4 text-right font-semibold ${
-                    tx.transaction_type === 'INCOME' ? 'text-green-400' : 'text-white'
-                  }`}>
+                  <td className={`py-3 px-4 text-right font-semibold ${tx.transaction_type === 'INCOME' ? 'text-green-400' : 'text-white'
+                    }`}>
                     {tx.transaction_type === 'INCOME' ? '+' : '-'}
                     ${tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                   </td>

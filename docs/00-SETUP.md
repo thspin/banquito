@@ -1,4 +1,4 @@
-# Setup Inicial - Tuli Python
+# Setup Inicial - banquito
 
 ## 📋 Requisitos Previos
 
@@ -12,7 +12,7 @@ Antes de comenzar, asegúrate de tener instalado:
 ## 🗂️ Estructura del Proyecto
 
 ```
-tuli-python/
+banquito/
 ├── backend/                 # FastAPI Application
 │   ├── app/
 │   │   ├── main.py         # Entry point FastAPI
@@ -84,7 +84,7 @@ cp .env.example .env
 Editar `.env`:
 ```env
 # Database
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/tuli
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/banquito
 
 # App
 APP_ENV=development
@@ -101,9 +101,9 @@ FRONTEND_URL=http://localhost:5173
 psql -U postgres
 
 # Crear database
-CREATE DATABASE tuli;
-CREATE USER tuli_user WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE tuli TO tuli_user;
+CREATE DATABASE banquito;
+CREATE USER banquito_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE banquito TO banquito_user;
 \q
 ```
 

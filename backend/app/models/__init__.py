@@ -1,4 +1,4 @@
-"""Database models for Tuli Finance application."""
+"""Database models for banquito application."""
 
 import uuid
 from datetime import datetime

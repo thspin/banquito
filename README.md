@@ -1,11 +1,11 @@
-# Tuli Python - Finance OS
+# banquito
 
 Sistema de gestión financiera personal construido con FastAPI y React.
 
 ## 🏗️ Estructura del Proyecto
 
 ```
-tuli-python/
+banquito/
 ├── backend/              # FastAPI Backend
 │   ├── app/             
 │   │   ├── main.py      # Entry point

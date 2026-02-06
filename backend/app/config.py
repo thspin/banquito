@@ -6,13 +6,13 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # App
-    APP_NAME: str = "Tuli API"
+    APP_NAME: str = "Banquito API"
     APP_ENV: str = "development"
     DEBUG: bool = True
     VERSION: str = "1.0.0"
     
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/tuli"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/banquito"
     
     @property
     def ASYNC_DATABASE_URL(self) -> str:
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     
     # Hardcoded user for development (will be replaced with auth later)
     CURRENT_USER_ID: str = "550e8400-e29b-41d4-a716-446655440000"
-    CURRENT_USER_EMAIL: str = "demo@tuli.app"
+    CURRENT_USER_EMAIL: str = "demo@banquito.app"
     
     class Config:
         env_file = ".env"

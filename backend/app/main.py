@@ -1,5 +1,5 @@
 """
-Tuli Finance API
+Banquito API
 FastAPI application entry point
 """
 
@@ -16,14 +16,14 @@ from app.database import init_db
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
-    print("🚀 Starting up Tuli API...")
+    print("🚀 Starting up Banquito API...")
     # Initialize database tables (optional, migrations preferred)
     # await init_db()
     
     yield
     
     # Shutdown
-    print("👋 Shutting down Tuli API...")
+    print("👋 Shutting down Banquito API...")
 
 
 # Create FastAPI application
@@ -51,7 +51,7 @@ app.add_middleware(
 async def root():
     """Root endpoint."""
     return {
-        "message": "Welcome to Tuli API",
+        "message": "Welcome to Banquito API",
         "version": settings.VERSION,
         "docs": "/docs",
     }

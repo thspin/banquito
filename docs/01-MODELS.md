@@ -1,4 +1,4 @@
-# Modelos de Base de Datos - Tuli Python
+# Modelos de Base de Datos - banquito
 
 ## 📊 Diagrama de Entidades
 

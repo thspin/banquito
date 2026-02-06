@@ -41,4 +41,8 @@
            px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-primary-400
            transition-all duration-200;
   }
+
+  select.glass-input option {
+    @apply bg-slate-800 text-white;
+  }
 }

@@ -231,9 +231,8 @@ export default function Settings() {
                       key={icon.emoji}
                       type="button"
                       onClick={() => setNewCategory({ ...newCategory, icon: icon.emoji })}
-                      className={`text-2xl p-2 rounded hover:bg-white/20 transition-colors ${
-                        newCategory.icon === icon.emoji ? 'bg-white/30 ring-2 ring-primary-400' : ''
-                      }`}
+                      className={`text-2xl p-2 rounded hover:bg-white/20 transition-colors ${newCategory.icon === icon.emoji ? 'bg-white/30 ring-2 ring-primary-400' : ''
+                        }`}
                       title={icon.name}
                     >
                       {icon.emoji}

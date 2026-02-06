@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: tuli-api
+    name: banquito-api
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -10,16 +10,16 @@ services:
         value: 3.11.0
       - key: DATABASE_URL
         fromDatabase:
-          name: tuli-db
+          name: banquito-db
           property: connectionString
       - key: APP_ENV
         value: production
       - key: DEBUG
         value: false
       - key: FRONTEND_URL
-        value: https://tuli-web.vercel.app
+        value: https://banquito-web.vercel.app
 
 databases:
-  - name: tuli-db
+  - name: banquito-db
     plan: free
     ipAllowList: []
