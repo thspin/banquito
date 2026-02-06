@@ -122,10 +122,13 @@ class CategoryBase(BaseSchema):
     name: str
     icon: Optional[str] = None
     category_type: str = CategoryType.EXPENSE
-    is_system: bool = False
 
 
-class CategoryCreate(CategoryBase):
+class CategoryCreate(BaseSchema):
+    name: str
+    icon: Optional[str] = None
+    category_type: str = CategoryType.EXPENSE
+    
     @field_validator('category_type')
     @classmethod
     def validate_category_type(cls, v):
@@ -142,6 +145,7 @@ class CategoryUpdate(BaseSchema):
 class CategoryResponse(CategoryBase, TimestampSchema):
     id: UUID
     user_id: UUID
+    is_system: bool
 
 
 # ============== Financial Institution Schemas ==============

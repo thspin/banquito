@@ -15,5 +15,5 @@ export const categoriesApi = {
     apiClient.delete<void>(`/categories/${id}`),
 
   seedCategories: () =>
-    apiClient.post<{ success: boolean; message: string }>('/categories/seed'),
+    apiClient.post<{ success: boolean; message: string }>('/categories/seed', {}),
 };

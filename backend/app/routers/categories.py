@@ -203,7 +203,7 @@ async def delete_category(
     return {"success": True, "message": "Category deleted successfully"}
 
 
-@router.post("/seed")
+@router.post("/seed", response_model=dict)
 async def seed_default_categories(
     db: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
