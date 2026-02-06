@@ -1,0 +1,36 @@
+# Frontend files (not needed for backend deploy)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Documentation
+docs/
+*.md
+!backend/README.md
+
+# Development files
+.git/
+.vscode/
+.idea/
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment files (use Railway variables instead)
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Test files
+tests/
+test_*.py
+*_test.py

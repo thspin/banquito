@@ -87,7 +87,8 @@ Frontend disponible en: http://localhost:5173
 - [06-FRONTEND-SETUP.md](docs/06-FRONTEND-SETUP.md) - Setup del frontend
 - [07-FRONTEND-UI.md](docs/07-FRONTEND-UI.md) - Componentes UI
 - [08-FRONTEND-PAGES.md](docs/08-FRONTEND-PAGES.md) - Páginas
-- [09-DEPLOY.md](docs/09-DEPLOY.md) - Guía de deploy
+- [09-DEPLOY.md](docs/09-DEPLOY.md) - Guía de deploy (Render)
+- [10-RAILWAY-DEPLOY.md](docs/10-RAILWAY-DEPLOY.md) - Guía de deploy (Railway) ⭐ **Recomendado**
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Arquitectura general
 
 ## 🛠️ Stack Tecnológico
