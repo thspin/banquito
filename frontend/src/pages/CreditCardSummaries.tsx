@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { summariesApi } from '@/api/summaries';
 import { accountsApi } from '@/api/accounts';
 import { Card } from '@/components/ui/Card';
-import type { CreditCardSummary, CreditCardSummaryDetail, FinancialProduct } from '@/types';
+import type { CreditCardSummary, FinancialProduct } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 

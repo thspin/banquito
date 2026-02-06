@@ -3,7 +3,7 @@ import { accountsApi } from '@/api/accounts';
 import { Card } from '@/components/ui/Card';
 
 export default function Dashboard() {
-  const { data: products, isLoading } = useQuery({
+  const { data: products } = useQuery({
     queryKey: ['products'],
     queryFn: () => accountsApi.getProducts(),
   });

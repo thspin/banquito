@@ -4,7 +4,7 @@ import { transactionsApi } from '@/api/transactions';
 import { accountsApi } from '@/api/accounts';
 import { categoriesApi } from '@/api/categories';
 import { Card } from '@/components/ui/Card';
-import type { Transaction, FinancialProduct, Category } from '@/types';
+import type { Transaction, FinancialProduct, Category, TransactionType } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -44,7 +44,7 @@ export default function Transactions() {
       amount: parseFloat(formData.get('amount') as string),
       date: formData.get('date') as string,
       description: formData.get('description') as string,
-      transaction_type: formData.get('transaction_type') as string,
+      transaction_type: formData.get('transaction_type') as TransactionType,
       from_product_id: formData.get('from_product_id') as string,
       category_id: formData.get('category_id') as string || undefined,
       installments: parseInt(formData.get('installments') as string) || 1,

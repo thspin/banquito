@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { accountsApi } from '@/api/accounts';
 import { Card } from '@/components/ui/Card';
-import type { FinancialProduct, FinancialInstitution } from '@/types';
+import type { FinancialProduct, FinancialInstitution, ProductType, Currency } from '@/types';
 
 export default function Accounts() {
   const navigate = useNavigate();
@@ -35,8 +35,8 @@ export default function Accounts() {
     
     createProductMutation.mutate({
       name: formData.get('name') as string,
-      product_type: formData.get('product_type') as string,
-      currency: formData.get('currency') as string,
+      product_type: formData.get('product_type') as ProductType,
+      currency: formData.get('currency') as Currency,
       institution_id: selectedInstitution || undefined,
       balance: 0,
     });
