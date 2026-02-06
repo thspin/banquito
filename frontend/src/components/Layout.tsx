@@ -38,7 +38,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-3">
+          <Link
+            to="/settings"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all duration-200"
+          >
+            <span className="text-xl">⚙️</span>
+            <span className="font-medium">Configuración</span>
+          </Link>
           <div className="glass-card p-4">
             <p className="text-sm text-white/60">Usuario Demo</p>
             <p className="text-white font-medium">demo@tuli.app</p>

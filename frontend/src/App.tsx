@@ -7,6 +7,7 @@ import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
 import Services from './pages/Services';
 import CreditCardSummaries from './pages/CreditCardSummaries';
+import Settings from './pages/Settings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,7 @@ function App() {
               <Route path="/accounts/:productId/summaries" element={<CreditCardSummaries />} />
               <Route path="/transactions" element={<Transactions />} />
               <Route path="/services" element={<Services />} />
+              <Route path="/settings" element={<Settings />} />
             </Routes>
           </Layout>
         </BrowserRouter>
