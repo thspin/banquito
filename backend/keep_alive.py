@@ -5,7 +5,7 @@ import os
 import time
 
 # URL de la API en Render (se puede configurar vía variable de entorno)
-API_URL = os.getenv("API_URL", "https://tuli-api.onrender.com")
+API_URL = os.getenv("API_URL", "https://banquito-api.onrender.com")
 
 async def keep_alive():
     """
