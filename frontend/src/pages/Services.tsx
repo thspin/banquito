@@ -47,16 +47,31 @@ export default function Services() {
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
     const category_id = formData.get('category_id') as string;
+    const amountStr = formData.get('amount') as string;
+    const dueDayStr = formData.get('due_day') as string;
 
     if (!name || !category_id) {
       showToast('Nombre y Categoría son requeridos', 'error');
       return;
     }
 
+    const amount = amountStr ? parseFloat(amountStr) : undefined;
+    const due_day = dueDayStr ? parseInt(dueDayStr) : undefined;
+
+    if (amountStr && isNaN(amount as number)) {
+      showToast('El monto debe ser un número válido', 'error');
+      return;
+    }
+
+    if (dueDayStr && isNaN(due_day as number)) {
+      showToast('el día de vencimiento debe ser un número válido', 'error');
+      return;
+    }
+
     createMutation.mutate({
       name,
-      default_amount: parseFloat(formData.get('amount') as string) || undefined,
-      default_due_day: parseInt(formData.get('due_day') as string) || undefined,
+      default_amount: amount,
+      default_due_day: due_day,
       category_id,
       active: true,
     });

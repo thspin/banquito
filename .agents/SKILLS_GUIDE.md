@@ -34,6 +34,11 @@ This document defines when and why each installed skill should be used. Before s
 - **When to use**: Writing React components, Next.js pages, data fetching logic, or optimizing bundle size.
 - **Key Outcome**: Performance-tuned code (waterfall-free, optimized re-renders, efficient server-side data).
 
+### 7. `vercel-deployment`
+**Purpose**: Guidelines for managing and verifying deployments on Vercel.
+- **When to use**: After completing any fix or feature, when pushing changes, or when verifying production status.
+- **Key Outcome**: Changes pushed to main, deployment verified, and production smoke test completed.
+
 ## 📋 Decision Protocol for the Agent
 
 1. **Review User Task**: What is the core objective? (Design, Debug, Build, Refactor).

@@ -1,6 +1,0 @@
-Vercel CLI 50.14.0
-Retrieving project…
-The `name` property in vercel.json is deprecated (https://vercel.link/name-prop)
-Deploying thspins-projects/banquito
-Error: If `rewrites`, `redirects`, `headers`, `cleanUrls` or `trailingSlash` are used, then `routes` cannot be present.
-Learn More: https://vercel.link/mix-routing-props
