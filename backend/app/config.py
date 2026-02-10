@@ -45,9 +45,6 @@ class Settings(BaseSettings):
         """Get all allowed CORS origins including FRONTEND_URL."""
         origins = set(self.ALLOWED_ORIGINS)
         origins.add(self.FRONTEND_URL)
-        # Add Vercel preview deployments
-        if self.APP_ENV == "production":
-            origins.add("https://*.vercel.app")
         return list(origins)
     
     # Hardcoded user for development (will be replaced with auth later)

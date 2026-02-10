@@ -77,6 +77,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app" if settings.APP_ENV == "production" else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -87,12 +88,23 @@ app.add_middleware(
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle all unhandled exceptions."""
     import traceback
+    
+    # Log the full error to stderr (server logs) always
     error_detail = {
         "error": str(exc),
         "type": type(exc).__name__,
         "traceback": traceback.format_exc().split("\n")[-10:]  # Last 10 lines
     }
     print(f"ERROR: {error_detail}", file=sys.stderr)
+
+    # In production, return a generic error message to the client
+    if not settings.DEBUG:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error"}
+        )
+
+    # In debug mode, return full details
     return JSONResponse(
         status_code=500,
         content=error_detail
