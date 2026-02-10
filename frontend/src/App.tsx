@@ -6,7 +6,7 @@ import { ToastProvider } from './components/ui/Toast';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
-import Services from './pages/Services';
+// import Services from './pages/Services';
 import CreditCardSummaries from './pages/CreditCardSummaries';
 import Settings from './pages/Settings';
 
