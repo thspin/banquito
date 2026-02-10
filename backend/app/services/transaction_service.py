@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import select, and_, desc
@@ -412,3 +412,118 @@ class TransactionService:
         day = min(date.day, [31, 29 if year % 4 == 0 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
         
         return date.replace(year=year, month=month, day=day)
+    
+    # ============== Batch Operations ==============
+    
+    async def batch_create_transactions(
+        self,
+        transactions_data: List[TransactionCreate],
+        user_id: UUID
+    ) -> List[Transaction]:
+        """
+        Create multiple transactions efficiently in a single batch.
+        
+        This is more efficient than calling create_transaction multiple times
+        because it minimizes database round trips.
+        """
+        all_transactions = []
+        products_to_update: Dict[UUID, Decimal] = {}
+        
+        # First pass: validate all transactions and collect products to update
+        for data in transactions_data:
+            product = await self._get_product(data.from_product_id, user_id)
+            if not product:
+                raise ValueError(f"Source product not found: {data.from_product_id}")
+            
+            # For simplicity, only handle single-installment transactions in batch
+            if data.transaction_type == TransactionType.EXPENSE:
+                if product.product_type == ProductType.CREDIT_CARD:
+                    await self._validate_credit_card_limit(product, data.amount, False)
+                
+                balance_change = -data.amount
+                if data.from_product_id in products_to_update:
+                    products_to_update[data.from_product_id] += balance_change
+                else:
+                    products_to_update[data.from_product_id] = balance_change
+            
+            elif data.transaction_type == TransactionType.INCOME:
+                balance_change = data.amount
+                if data.from_product_id in products_to_update:
+                    products_to_update[data.from_product_id] += balance_change
+                else:
+                    products_to_update[data.from_product_id] = balance_change
+        
+        # Second pass: create all transactions
+        for data in transactions_data:
+            transaction = Transaction(
+                amount=data.amount,
+                date=data.date,
+                description=data.description,
+                transaction_type=data.transaction_type,
+                category_id=data.category_id,
+                user_id=user_id,
+                from_product_id=data.from_product_id if data.transaction_type == TransactionType.EXPENSE else None,
+                to_product_id=data.from_product_id if data.transaction_type == TransactionType.INCOME else None,
+            )
+            self.db.add(transaction)
+            all_transactions.append(transaction)
+        
+        # Third pass: update all product balances
+        for product_id, total_change in products_to_update.items():
+            product = await self._get_product(product_id, user_id)
+            if product:
+                await self._update_product_balance(product, total_change)
+        
+        await self.db.commit()
+        
+        # Refresh all transactions
+        for transaction in all_transactions:
+            await self.db.refresh(transaction)
+        
+        return all_transactions
+    
+    async def get_transaction_summary(
+        self,
+        user_id: UUID,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        product_id: Optional[UUID] = None
+    ) -> Dict[str, Decimal]:
+        """
+        Get summary statistics for transactions in a date range.
+        Returns totals for income, expenses, and transfers.
+        """
+        query = select(Transaction).where(Transaction.user_id == user_id)
+        
+        if start_date:
+            query = query.where(Transaction.date >= start_date)
+        if end_date:
+            query = query.where(Transaction.date <= end_date)
+        if product_id:
+            query = query.where(
+                (Transaction.from_product_id == product_id) |
+                (Transaction.to_product_id == product_id)
+            )
+        
+        result = await self.db.execute(query)
+        transactions = result.scalars().all()
+        
+        summary = {
+            "total_income": Decimal("0"),
+            "total_expense": Decimal("0"),
+            "total_transfer": Decimal("0"),
+            "net_change": Decimal("0"),
+        }
+        
+        for transaction in transactions:
+            amount = transaction.amount
+            if transaction.transaction_type == TransactionType.INCOME:
+                summary["total_income"] += amount
+                summary["net_change"] += amount
+            elif transaction.transaction_type == TransactionType.EXPENSE:
+                summary["total_expense"] += amount
+                summary["net_change"] -= amount
+            elif transaction.transaction_type == TransactionType.TRANSFER:
+                summary["total_transfer"] += amount
+        
+        return summary

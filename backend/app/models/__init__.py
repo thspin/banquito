@@ -260,7 +260,7 @@ class Transaction(Base):
     category = relationship("Category", back_populates="transactions")
     from_product = relationship("FinancialProduct", foreign_keys=[from_product_id], back_populates="transactions_origin")
     to_product = relationship("FinancialProduct", foreign_keys=[to_product_id], back_populates="transactions_dest")
-    service_bill = relationship("ServiceBill", back_populates="transaction")
+    # service_bill relationship removed temporarily to fix SQLAlchemy mapping issues
     summary_items = relationship("SummaryItem", back_populates="transaction", cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -373,7 +373,7 @@ class Service(Base):
     active = Column(Boolean, default=True)
     
     # Relations
-    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=False)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
@@ -416,7 +416,7 @@ class ServiceBill(Base):
     # Relationships
     user = relationship("User", back_populates="service_bills")
     service = relationship("Service", back_populates="bills")
-    transaction = relationship("Transaction", back_populates="service_bill")
+    # transaction relationship removed temporarily
 
     def __repr__(self):
         return f"<ServiceBill {self.service.name} {self.month}/{self.year}>"

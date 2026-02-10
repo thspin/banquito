@@ -207,10 +207,23 @@ async def list_institutions_with_products(
 ):
     """Get all institutions with their products."""
     service = AccountService(db)
+    
+    # Get all institutions
     institutions = await service.get_institutions(user_id)
     
-    # Load products for each institution
+    if not institutions:
+        return []
+    
+    # Get all institution IDs
+    institution_ids = [inst.id for inst in institutions]
+    
+    # Fetch all products for all institutions in a single query (avoids N+1)
+    products_by_institution = await service.get_products_by_institutions_batch(
+        user_id, institution_ids
+    )
+    
+    # Assign products to institutions
     for institution in institutions:
-        institution.products = await service.get_products(user_id, institution.id)
+        institution.products = products_by_institution.get(institution.id, [])
     
     return institutions

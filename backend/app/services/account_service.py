@@ -1,11 +1,12 @@
 """Account service - Business logic for institutions and products."""
 
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Optional, Dict
 from uuid import UUID
 
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models import (
     FinancialInstitution,
@@ -31,13 +32,20 @@ class AccountService:
     
     # ============== Institution Methods ==============
     
-    async def get_institutions(self, user_id: UUID) -> List[FinancialInstitution]:
-        """Get all institutions for a user."""
-        result = await self.db.execute(
-            select(FinancialInstitution)
-            .where(FinancialInstitution.user_id == user_id)
-            .order_by(FinancialInstitution.name)
-        )
+    async def get_institutions(
+        self, 
+        user_id: UUID, 
+        load_products: bool = False
+    ) -> List[FinancialInstitution]:
+        """Get all institutions for a user with optional eager loading of products."""
+        query = select(FinancialInstitution).where(
+            FinancialInstitution.user_id == user_id
+        ).order_by(FinancialInstitution.name)
+        
+        if load_products:
+            query = query.options(selectinload(FinancialInstitution.products))
+        
+        result = await self.db.execute(query)
         return result.scalars().all()
     
     async def get_institution(self, institution_id: UUID, user_id: UUID) -> Optional[FinancialInstitution]:
@@ -105,17 +113,53 @@ class AccountService:
     async def get_products(
         self, 
         user_id: UUID, 
-        institution_id: Optional[UUID] = None
+        institution_id: Optional[UUID] = None,
+        product_ids: Optional[List[UUID]] = None
     ) -> List[FinancialProduct]:
-        """Get all products for a user."""
+        """Get all products for a user with optional filters."""
         query = select(FinancialProduct).where(FinancialProduct.user_id == user_id)
         
         if institution_id:
             query = query.where(FinancialProduct.institution_id == institution_id)
         
+        if product_ids:
+            query = query.where(FinancialProduct.id.in_(product_ids))
+        
         query = query.order_by(FinancialProduct.name)
         result = await self.db.execute(query)
         return result.scalars().all()
+    
+    async def get_products_by_institutions_batch(
+        self,
+        user_id: UUID,
+        institution_ids: List[UUID]
+    ) -> Dict[UUID, List[FinancialProduct]]:
+        """Get products for multiple institutions in a single query (avoids N+1)."""
+        if not institution_ids:
+            return {}
+        
+        result = await self.db.execute(
+            select(FinancialProduct)
+            .where(
+                and_(
+                    FinancialProduct.user_id == user_id,
+                    FinancialProduct.institution_id.in_(institution_ids)
+                )
+            )
+            .order_by(FinancialProduct.name)
+        )
+        
+        products = result.scalars().all()
+        
+        # Group by institution_id
+        grouped: Dict[UUID, List[FinancialProduct]] = {}
+        for product in products:
+            if product.institution_id:
+                if product.institution_id not in grouped:
+                    grouped[product.institution_id] = []
+                grouped[product.institution_id].append(product)
+        
+        return grouped
     
     async def get_product(self, product_id: UUID, user_id: UUID) -> Optional[FinancialProduct]:
         """Get a specific product with relations."""

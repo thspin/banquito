@@ -125,12 +125,7 @@ async def update_category(
             detail="Category not found"
         )
     
-    # Don't allow editing system categories
-    if category.is_system:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot modify system categories"
-        )
+    # Allowed editing system categories now
     
     if data.name is not None:
         # Check for name conflict
@@ -183,19 +178,24 @@ async def delete_category(
             detail="Category not found"
         )
     
-    # Don't allow deleting system categories
-    if category.is_system:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot delete system categories"
-        )
+    # Allowed deleting system categories now
     
-    # Check if category has transactions
-    if category.transactions:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete category with transactions"
-        )
+    # Update related transactions to set category_id to NULL
+    from app.models import Transaction, Service
+    from sqlalchemy import update
+    
+    await db.execute(
+        update(Transaction)
+        .where(Transaction.category_id == category_id)
+        .values(category_id=None)
+    )
+    
+    # Update related services to set category_id to NULL
+    await db.execute(
+        update(Service)
+        .where(Service.category_id == category_id)
+        .values(category_id=None)
+    )
     
     await db.delete(category)
     await db.commit()

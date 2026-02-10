@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import type { Service, ServiceBill, Category } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useToast } from '@/components/ui/Toast';
 
 export default function Services() {
   const queryClient = useQueryClient();
@@ -28,23 +29,35 @@ export default function Services() {
     queryFn: () => categoriesApi.getCategories('EXPENSE'),
   });
 
+  const { showToast } = useToast();
   const createMutation = useMutation({
     mutationFn: servicesApi.createService,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services'] });
+      showToast('Servicio creado exitosamente', 'success');
       setShowForm(false);
+    },
+    onError: (error: any) => {
+      showToast(error?.response?.data?.detail || 'Error al crear servicio', 'error');
     },
   });
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+    const name = formData.get('name') as string;
+    const category_id = formData.get('category_id') as string;
+
+    if (!name || !category_id) {
+      showToast('Nombre y Categoría son requeridos', 'error');
+      return;
+    }
+
     createMutation.mutate({
-      name: formData.get('name') as string,
+      name,
       default_amount: parseFloat(formData.get('amount') as string) || undefined,
       default_due_day: parseInt(formData.get('due_day') as string) || undefined,
-      category_id: formData.get('category_id') as string,
+      category_id,
       active: true,
     });
   };
@@ -135,15 +148,14 @@ export default function Services() {
                     ${bill.amount.toFixed(2)}
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      bill.status === 'PAID'
-                        ? 'bg-green-500/20 text-green-400'
-                        : bill.status === 'PENDING'
+                    <span className={`px-2 py-1 rounded text-xs ${bill.status === 'PAID'
+                      ? 'bg-green-500/20 text-green-400'
+                      : bill.status === 'PENDING'
                         ? 'bg-yellow-500/20 text-yellow-400'
                         : 'bg-gray-500/20 text-gray-400'
-                    }`}>
-                      {bill.status === 'PAID' ? 'Pagada' : 
-                       bill.status === 'PENDING' ? 'Pendiente' : 'Omitida'}
+                      }`}>
+                      {bill.status === 'PAID' ? 'Pagada' :
+                        bill.status === 'PENDING' ? 'Pendiente' : 'Omitida'}
                     </span>
                   </td>
                 </tr>

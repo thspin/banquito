@@ -1,37 +1,35 @@
-# banquito
+# Banquito 💰
 
-Sistema de gestión financiera personal construido con FastAPI y React.
+Sistema de gestión financiera personal - FastAPI + React + PostgreSQL
 
-## 🏗️ Estructura del Proyecto
+## 🚀 Stack de Producción
+
+- **Frontend & Backend**: [Vercel](https://vercel.com) (Serverless)
+- **Base de Datos**: [Neon](https://neon.tech) (Serverless PostgreSQL)
+
+## 📁 Estructura del Proyecto
 
 ```
 banquito/
-├── backend/              # FastAPI Backend
-│   ├── app/             
-│   │   ├── main.py      # Entry point
-│   │   ├── models/      # SQLAlchemy models
-│   │   ├── schemas/     # Pydantic schemas
-│   │   ├── routers/     # API endpoints
-│   │   └── services/    # Business logic
-│   ├── alembic/         # Database migrations
+├── api/
+│   └── index.py              # Entry point para Vercel (serverless)
+├── backend/
+│   ├── app/
+│   │   ├── main.py          # FastAPI app
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── routers/         # API endpoints
+│   │   ├── services/        # Business logic
+│   │   └── cache.py         # Caché utilities
 │   └── requirements.txt
-├── frontend/            # React Frontend
-│   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── pages/       # Page components
-│   │   ├── hooks/       # Custom hooks
-│   │   ├── api/         # API client
-│   │   └── types/       # TypeScript types
+├── frontend/
+│   ├── src/                 # React + TypeScript
 │   └── package.json
-└── docs/                # Documentation
+├── vercel.json              # Configuración de Vercel
+├── deploy.sh                # Script de deploy
+└── DEPLOY.md               # Guía de deploy completa
 ```
 
-## 🚀 Quick Start
-
-### Requisitos
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 14+
+## ⚡ Quick Start (Local)
 
 ### Backend
 
@@ -49,17 +47,19 @@ pip install -r requirements.txt
 
 # Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tu DATABASE_URL
+# Editar .env con tu DATABASE_URL local
 
-# Correr migraciones
+# Crear base de datos PostgreSQL local
+createdb banquito
+
+# Migraciones
 alembic upgrade head
 
 # Iniciar servidor
 uvicorn app.main:app --reload
 ```
 
-API disponible en: http://localhost:8000
-Documentación: http://localhost:8000/docs
+API: http://localhost:8000/docs
 
 ### Frontend
 
@@ -74,42 +74,104 @@ cp .env.example .env
 npm run dev
 ```
 
-Frontend disponible en: http://localhost:5173
+Frontend: http://localhost:5173
+
+## 🚀 Deploy a Producción
+
+### Opción 1: Usando el Script (Recomendado)
+
+```bash
+# Login a Vercel (primera vez)
+npx vercel login
+
+# Ejecutar script de deploy
+./deploy.sh
+```
+
+### Opción 2: Manual
+
+#### 1. Crear Base de Datos en Neon
+
+1. Ir a [https://neon.tech](https://neon.tech)
+2. Crear proyecto nuevo
+3. Copiar el connection string
+
+#### 2. Configurar Variables de Entorno
+
+```bash
+npx vercel env add DATABASE_URL
+# Pegar: postgres://username:password@ep-xxx.us-east-1.aws.neon.tech/banquito?sslmode=require
+
+npx vercel env add APP_ENV production
+npx vercel env add DEBUG false
+npx vercel env add FRONTEND_URL https://tu-app.vercel.app
+```
+
+#### 3. Ejecutar Migraciones
+
+```bash
+cd backend
+export DATABASE_URL="postgres://username:password@ep-xxx.us-east-1.aws.neon.tech/banquito?sslmode=require"
+alembic upgrade head
+```
+
+#### 4. Deploy
+
+```bash
+npx vercel --prod
+```
 
 ## 📚 Documentación
 
-- [00-SETUP.md](docs/00-SETUP.md) - Setup detallado
-- [01-MODELS.md](docs/01-MODELS.md) - Modelos de base de datos
-- [02-ACCOUNTS-API.md](docs/02-ACCOUNTS-API.md) - API de cuentas
-- [03-TRANSACTIONS-API.md](docs/03-TRANSACTIONS-API.md) - API de transacciones
-- [04-SUMMARIES-API.md](docs/04-SUMMARIES-API.md) - API de resúmenes
-- [05-SERVICES-API.md](docs/05-SERVICES-API.md) - API de servicios
-- [06-FRONTEND-SETUP.md](docs/06-FRONTEND-SETUP.md) - Setup del frontend
-- [07-FRONTEND-UI.md](docs/07-FRONTEND-UI.md) - Componentes UI
-- [08-FRONTEND-PAGES.md](docs/08-FRONTEND-PAGES.md) - Páginas
-- [DEPLOY_VERCEL_NEON.md](docs/DEPLOY_VERCEL_NEON.md) - Guía de deploy (Vercel + Neon) 🚀
+- [DEPLOY.md](DEPLOY.md) - Guía completa de deploy
+- [OPTIMIZATIONS.md](OPTIMIZATIONS.md) - Optimizaciones implementadas
+- [docs/00-SETUP.md](docs/00-SETUP.md) - Setup detallado local
+- [docs/01-MODELS.md](docs/01-MODELS.md) - Modelos de base de datos
+- [docs/DEPLOY_VERCEL_NEON.md](docs/DEPLOY_VERCEL_NEON.md) - Guía alternativa de deploy
 
-**Stack Recomendado:**
-- Frontend & Backend: Vercel (Monorepo)
-- Database: Neon (Serverless Postgres)
+## 🛠️ Características
 
-## 🛠️ Stack Tecnológico
+- ✅ Gestión de cuentas bancarias y tarjetas
+- ✅ Registro de transacciones (ingresos, gastos, transferencias)
+- ✅ Cuotas y Plan Z
+- ✅ Resúmenes de tarjetas de crédito
+- ✅ Gestión de servicios recurrentes
+- ✅ Múltiples monedas (ARS, USD, USDT, USDC, BTC)
+- ✅ Dashboard con gráficos
+- ✅ Categorías personalizables
+
+## 🔧 Tecnologías
 
 **Backend:**
-- FastAPI 0.104+
-- SQLAlchemy 2.0+ (async)
+- FastAPI (async)
+- SQLAlchemy 2.0 + asyncpg
 - PostgreSQL
-- Pydantic 2.0+
+- Pydantic
 - Alembic
 
 **Frontend:**
-- React 18+
-- TypeScript 5.0+
-- Vite 5.0+
-- Tailwind CSS 3.4+
+- React 18
+- TypeScript 5
+- Vite
+- Tailwind CSS
 - TanStack Query
-- Axios
+- Recharts
+
+**Producción:**
+- Vercel (Serverless)
+- Neon (PostgreSQL serverless)
 
 ## 📝 Licencia
 
 MIT
+
+## 🆘 Soporte
+
+Si encuentras problemas:
+1. Revisar [DEPLOY.md](DEPLOY.md) - Troubleshooting
+2. Verificar logs: `npx vercel logs --tail`
+3. Revisar variables de entorno en Vercel dashboard
+
+---
+
+**Desarrollado con ❤️ para gestionar tus finanzas personales**
