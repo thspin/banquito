@@ -31,7 +31,9 @@ target_metadata = Base.metadata
 # ... etc.
 
 # Override sqlalchemy.url with our settings (use async URL)
-config.set_main_option("sqlalchemy.url", settings.ASYNC_DATABASE_URL)
+# Override sqlalchemy.url with our settings (use async URL)
+# Use DATABASE_URL_CLEAN to avoid passing incompatible params like sslmode to asyncpg
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL_CLEAN)
 
 
 def run_migrations_offline() -> None:
