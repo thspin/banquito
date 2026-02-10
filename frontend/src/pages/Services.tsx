@@ -38,7 +38,8 @@ export default function Services() {
       setShowForm(false);
     },
     onError: (error: any) => {
-      showToast(error?.response?.data?.detail || 'Error al crear servicio', 'error');
+      const errorMsg = error?.response?.data?.detail || error?.response?.data?.error || 'Error al crear servicio';
+      showToast(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg), 'error');
     },
   });
 
