@@ -87,11 +87,11 @@ Frontend disponible en: http://localhost:5173
 - [06-FRONTEND-SETUP.md](docs/06-FRONTEND-SETUP.md) - Setup del frontend
 - [07-FRONTEND-UI.md](docs/07-FRONTEND-UI.md) - Componentes UI
 - [08-FRONTEND-PAGES.md](docs/08-FRONTEND-PAGES.md) - Páginas
-- [DEPLOY_VERCEL_SUPABASE.md](docs/DEPLOY_VERCEL_SUPABASE.md) - Guía de deploy (Vercel + Supabase) 🚀
+- [DEPLOY_VERCEL_NEON.md](docs/DEPLOY_VERCEL_NEON.md) - Guía de deploy (Vercel + Neon) 🚀
 
 **Stack Recomendado:**
 - Frontend & Backend: Vercel (Monorepo)
-- Database: Supabase PostgreSQL
+- Database: Neon (Serverless Postgres)
 
 ## 🛠️ Stack Tecnológico
 
