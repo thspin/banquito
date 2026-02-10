@@ -29,7 +29,7 @@ function App() {
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/accounts/:productId/summaries" element={<CreditCardSummaries />} />
               <Route path="/transactions" element={<Transactions />} />
-              <Route path="/services" element={<Services />} />
+              {/* <Route path="/services" element={<Services />} /> */}
               <Route path="/settings" element={<Settings />} />
             </Routes>
           </Layout>

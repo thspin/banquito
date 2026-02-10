@@ -4,7 +4,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/accounts', label: 'Cuentas', icon: '🏦' },
   { path: '/transactions', label: 'Transacciones', icon: '💳' },
-  { path: '/services', label: 'Servicios', icon: '📅' },
+  // { path: '/services', label: 'Servicios', icon: '📅' },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -34,8 +34,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
               key={item.path}
               to={item.path}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${location.pathname === item.path
-                  ? 'bg-primary-600 text-white'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? 'bg-primary-600 text-white'
+                : 'text-white/70 hover:bg-white/10 hover:text-white'
                 }`}
             >
               <span className="text-xl">{item.icon}</span>
