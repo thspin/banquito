@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { UserButton, useUser } from "@clerk/clerk-react";
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
@@ -9,6 +10,7 @@ const navItems = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const { user } = useUser();
 
   return (
     <div className="min-h-screen flex">
@@ -52,9 +54,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <span className="text-xl">⚙️</span>
             <span className="font-medium">Configuración</span>
           </Link>
-          <div className="glass-card p-4">
-            <p className="text-sm text-white/60">Usuario Demo</p>
-            <p className="text-white font-medium">demo@banquito.app</p>
+          <div className="glass-card p-4 flex items-center gap-3">
+            <UserButton afterSignOutUrl="/" />
+            <div className="overflow-hidden">
+              <p className="text-sm font-medium text-white truncate">
+                {user?.fullName || user?.firstName || 'Usuario'}
+              </p>
+              <p className="text-xs text-white/60 truncate">
+                {user?.primaryEmailAddress?.emailAddress}
+              </p>
+            </div>
           </div>
         </div>
       </aside>
