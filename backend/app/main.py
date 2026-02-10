@@ -126,73 +126,9 @@ async def health_check():
     return {"status": "healthy", "version": settings.VERSION}
 
 
-# Serve static files (frontend) if available - MUST BE LAST
-frontend_path = None
-try:
-    from fastapi.staticfiles import StaticFiles
-    import os
-    
-    # Try multiple possible locations for the frontend build
-    frontend_paths = [
-        os.path.join(os.path.dirname(__file__), "../../frontend/dist"),
-        os.path.join(os.path.dirname(__file__), "../frontend/dist"),
-        os.path.join(os.path.dirname(__file__), "../../dist"),
-        "/var/task/frontend/dist",
-        "/var/task/dist",
-        "frontend/dist",
-        "dist",
-    ]
-    
-    for path in frontend_paths:
-        if os.path.exists(path) and os.path.exists(os.path.join(path, "index.html")):
-            frontend_path = path
-            break
-    
-    if frontend_path:
-        print(f"Serving frontend from: {frontend_path}")
-        assets_path = os.path.join(frontend_path, "assets")
-        index_path = os.path.join(frontend_path, "index.html")
-        
-        # Mount assets directory
-        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
-        
-        # Root route
-        @app.get("/")
-        async def serve_frontend():
-            from fastapi.responses import FileResponse
-            return FileResponse(index_path)
-        
-        # Catch-all route for SPA - must be last
-        @app.get("/{path:path}")
-        async def serve_spa(path: str):
-            from fastapi.responses import FileResponse
-            # Don't catch API routes
-            if path.startswith("api/"):
-                raise HTTPException(status_code=404, detail="Not found")
-            # Serve index.html for all other routes (SPA behavior)
-            return FileResponse(index_path)
-    else:
-        print("Frontend build not found, serving API only")
-        
-        @app.get("/")
-        async def root_no_frontend():
-            return {
-                "message": "Banquito API",
-                "status": "API only mode - frontend not built",
-                "docs": "/api/docs",
-                "health": "/api/health"
-            }
-except Exception as e:
-    print(f"Could not setup static files: {e}")
-    
-    @app.get("/")
-    async def root_error():
-        return {
-            "message": "Banquito API",
-            "status": "Error loading frontend",
-            "docs": "/api/docs",
-            "health": "/api/health"
-        }
+# Static file serving is handled by Vercel's static build output
+# No need to serve frontend from Python
+
 
 
 if __name__ == "__main__":

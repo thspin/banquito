@@ -22,24 +22,20 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-async def get_current_user_id() -> UUID:
+from app.auth import get_current_user_id as get_clerk_user_id
+
+async def get_current_user_id(user_id: str = Depends(get_clerk_user_id)) -> UUID:
     """
-    Get current user ID.
-    
-    For now, returns hardcoded user ID.
-    In the future, this will validate JWT token and return real user.
+    Get current user ID from Clerk token.
     """
-    return UUID(settings.CURRENT_USER_ID)
+    return UUID(user_id)
 
 
-async def get_current_user():
+async def get_current_user(user_id: UUID = Depends(get_current_user_id)):
     """
     Get current user info.
-    
-    Returns a dict with user info.
-    In the future, this will query the database for the user.
     """
+    # Todo: Fetch user details from DB if needed
     return {
-        "id": settings.CURRENT_USER_ID,
-        "email": settings.CURRENT_USER_EMAIL,
+        "id": str(user_id),
     }

@@ -1,92 +1,77 @@
-from datetime import datetime, timedelta
-from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+import os
+import httpx
+import jwt
+from fastapi import HTTPException, Security, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jwt.algorithms import RSAAlgorithm
+import json
+from functools import lru_cache
 
-from app.config import settings
-from app.models import User
+# Configuration
+CLERK_PEM_PUBLIC_KEY = os.environ.get("CLERK_PEM_PUBLIC_KEY")
+CLERK_ISSUER = os.environ.get("CLERK_ISSUER")
+CLERK_JWKS_URL = os.environ.get("CLERK_JWKS_URL")
 
-# Security
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
-# JWT Configuration
-SECRET_KEY = "your-secret-key-change-in-production"  # Change this!
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+@lru_cache()
+def get_jwks_client():
+    return httpx.Client()
 
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Create a JWT access token."""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-
-def decode_token(token: str) -> Optional[dict]:
-    """Decode and verify a JWT token."""
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except JWTError:
-        return None
-
-
-async def get_current_user_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> str:
-    """Get current user ID from JWT token."""
+async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Security(security)) -> str:
+    """
+    Verifies the Clerk JWT and returns the user ID.
+    """
     token = credentials.credentials
-    payload = decode_token(token)
     
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    user_id: str = payload.get("sub")
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return user_id
+    try:
+        # Decode headers to get the key ID
+        unverified_headers = jwt.get_unverified_header(token)
+        kid = unverified_headers.get("kid")
+        
+        # Method 1: Use PEM Public Key (Fastest if provided)
+        if CLERK_PEM_PUBLIC_KEY:
+            key = CLERK_PEM_PUBLIC_KEY
+        
+        # Method 2: Fetch from JWKS (Resilient)
+        elif CLERK_JWKS_URL:
+            # Note: In production, you should cache this!
+            async with httpx.AsyncClient() as client:
+                response = await client.get(CLERK_JWKS_URL)
+                jwks = response.json()
+                
+            public_key = None
+            for key_data in jwks["keys"]:
+                if key_data["kid"] == kid:
+                    public_key = RSAAlgorithm.from_jwk(json.dumps(key_data))
+                    break
+            
+            if not public_key:
+                raise HTTPException(status_code=401, detail="Invalid token key ID")
+            key = public_key
+        else:
+            # Fallback for development/demo (Skip verification if no keys provided)
+            # WARNING: NOT FOR PRODUCTION
+            if os.environ.get("APP_ENV") == "development":
+                 payload = jwt.decode(token, options={"verify_signature": False})
+                 return payload["sub"]
+            raise HTTPException(status_code=500, detail="Server auth configuration missing")
 
-
-# For development - allow both JWT and hardcoded user
-async def get_current_user_id_optional(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
-) -> str:
-    """Get current user ID from JWT token or use hardcoded for development."""
-    if credentials:
-        token = credentials.credentials
-        payload = decode_token(token)
-        if payload:
-            user_id = payload.get("sub")
-            if user_id:
-                return user_id
-    
-    # Fallback to hardcoded user for development
-    return settings.CURRENT_USER_ID
+        # Verify the token
+        payload = jwt.decode(
+            token,
+            key=key,
+            algorithms=["RS256"],
+            audience=os.environ.get("CLERK_AUDIENCE"), # Optional
+            issuer=CLERK_ISSUER # Optional but recommended
+        )
+        
+        return payload["sub"]
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+    except Exception as e:
+        print(f"Auth Error: {e}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
