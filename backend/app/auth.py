@@ -7,12 +7,17 @@ from jwt.algorithms import RSAAlgorithm
 import json
 from functools import lru_cache
 
-# Configuration
-CLERK_PEM_PUBLIC_KEY = os.environ.get("CLERK_PEM_PUBLIC_KEY")
-CLERK_ISSUER = os.environ.get("CLERK_ISSUER")
-CLERK_JWKS_URL = os.environ.get("CLERK_JWKS_URL")
-
+# JWT Configuration
 security = HTTPBearer()
+
+def get_auth_config():
+    """Get auth configuration from environment variables."""
+    return {
+        "pem_public_key": os.environ.get("CLERK_PEM_PUBLIC_KEY"),
+        "issuer": os.environ.get("CLERK_ISSUER"),
+        "jwks_url": os.environ.get("CLERK_JWKS_URL"),
+        "audience": os.environ.get("CLERK_AUDIENCE"),
+    }
 
 @lru_cache()
 def get_jwks_client():
@@ -23,6 +28,7 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Securi
     Verifies the Clerk JWT and returns the user ID.
     """
     token = credentials.credentials
+    config = get_auth_config()
     
     try:
         # Decode headers to get the key ID
@@ -30,16 +36,16 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Securi
         kid = unverified_headers.get("kid")
         
         # Method 1: Use PEM Public Key (Fastest if provided)
-        if CLERK_PEM_PUBLIC_KEY:
-            key = CLERK_PEM_PUBLIC_KEY
+        if config["pem_public_key"]:
+            key = config["pem_public_key"]
         
         # Method 2: Fetch from JWKS (Resilient)
-        elif CLERK_JWKS_URL:
+        elif config["jwks_url"]:
             # Note: In production, you should cache this!
             async with httpx.AsyncClient() as client:
-                response = await client.get(CLERK_JWKS_URL)
+                response = await client.get(config["jwks_url"])
                 if response.status_code != 200:
-                    print(f"Auth Error: Could not fetch JWKS from {CLERK_JWKS_URL}. Status: {response.status_code}")
+                    print(f"Auth Error: Could not fetch JWKS from {config['jwks_url']}. Status: {response.status_code}")
                     raise HTTPException(status_code=500, detail="Failed to fetch auth keys")
                 jwks = response.json()
                 
@@ -55,12 +61,13 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Securi
             key = public_key
         else:
             # Fallback for development/demo (Skip verification if no keys provided)
-            if os.environ.get("APP_ENV") == "development":
-                 print("Auth Warning: Skipping signature verification (APP_ENV=development)")
+            app_env = os.environ.get("APP_ENV", "development")
+            if app_env == "development":
+                 print(f"Auth Warning: Skipping signature verification (APP_ENV={app_env})")
                  payload = jwt.decode(token, options={"verify_signature": False})
                  return payload["sub"]
-            print("Auth Error: Server auth configuration missing (no PEM or JWKS URL)")
-            raise HTTPException(status_code=500, detail="Server auth configuration missing")
+            print(f"Auth Error: Server auth configuration missing. Env: {app_env}. Keys: {list(config.keys())}")
+            raise HTTPException(status_code=500, detail=f"Server auth configuration missing (Env: {app_env})")
 
         # Prepare verification options
         decode_options = {
@@ -68,13 +75,11 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Securi
         }
         
         # Only verify audience/issuer if specified and NOT empty strings
-        audience = os.environ.get("CLERK_AUDIENCE")
-        if audience:
-            decode_options["audience"] = audience
+        if config["audience"]:
+            decode_options["audience"] = config["audience"]
         
-        issuer = CLERK_ISSUER
-        if issuer:
-            decode_options["issuer"] = issuer
+        if config["issuer"]:
+            decode_options["issuer"] = config["issuer"]
 
         # Verify the token
         payload = jwt.decode(
