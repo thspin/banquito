@@ -6,17 +6,18 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt.algorithms import RSAAlgorithm
 import json
 from functools import lru_cache
+from app.config import settings
 
 # JWT Configuration
 security = HTTPBearer()
 
 def get_auth_config():
-    """Get auth configuration from environment variables."""
+    """Get auth configuration from settings."""
     return {
-        "pem_public_key": os.environ.get("CLERK_PEM_PUBLIC_KEY"),
-        "issuer": os.environ.get("CLERK_ISSUER"),
-        "jwks_url": os.environ.get("CLERK_JWKS_URL"),
-        "audience": os.environ.get("CLERK_AUDIENCE"),
+        "pem_public_key": settings.CLERK_PEM_PUBLIC_KEY,
+        "issuer": settings.CLERK_ISSUER,
+        "jwks_url": settings.CLERK_JWKS_URL,
+        "audience": settings.CLERK_AUDIENCE,
     }
 
 @lru_cache()
@@ -61,12 +62,15 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Securi
             key = public_key
         else:
             # Fallback for development/demo (Skip verification if no keys provided)
-            app_env = os.environ.get("APP_ENV", "development")
+            app_env = settings.APP_ENV
             if app_env == "development":
                  print(f"Auth Warning: Skipping signature verification (APP_ENV={app_env})")
                  payload = jwt.decode(token, options={"verify_signature": False})
                  return payload["sub"]
-            print(f"Auth Error: Server auth configuration missing. Env: {app_env}. Keys: {list(config.keys())}")
+            
+            # Diagnostic info: show which keys were empty
+            empty_keys = [k for k, v in config.items() if not v]
+            print(f"Auth Error: Server auth configuration missing. Env: {app_env}. Empty keys: {empty_keys}")
             raise HTTPException(status_code=500, detail=f"Server auth configuration missing (Env: {app_env})")
 
         # Prepare verification options
@@ -94,10 +98,10 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Securi
         print("Auth Error: Token expired")
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidAudienceError:
-        print(f"Auth Error: Invalid audience. Expected: {os.environ.get('CLERK_AUDIENCE')}")
+        print(f"Auth Error: Invalid audience. Expected: {config['audience']}")
         raise HTTPException(status_code=401, detail="Invalid token audience")
     except jwt.InvalidIssuerError:
-        print(f"Auth Error: Invalid issuer. Expected: {CLERK_ISSUER}")
+        print(f"Auth Error: Invalid issuer. Expected: {config['issuer']}")
         raise HTTPException(status_code=401, detail="Invalid token issuer")
     except jwt.InvalidTokenError as e:
         print(f"Auth Error: Invalid token: {str(e)}")

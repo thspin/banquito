@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     CURRENT_USER_ID: str = "550e8400-e29b-41d4-a716-446655440000"
     CURRENT_USER_EMAIL: str = "demo@banquito.app"
     
+    # Clerk Authentication
+    CLERK_PEM_PUBLIC_KEY: str = ""
+    CLERK_ISSUER: str = ""
+    CLERK_JWKS_URL: str = ""
+    CLERK_AUDIENCE: str = ""
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
