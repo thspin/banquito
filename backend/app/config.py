@@ -7,12 +7,12 @@ class Settings(BaseSettings):
     
     # App
     APP_NAME: str = "Banquito API"
-    APP_ENV: str = "development"
-    DEBUG: bool = True
+    APP_ENV: str = "production"
+    DEBUG: bool = False
     VERSION: str = "1.0.0"
     
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/banquito"
+    DATABASE_URL: str = "postgresql+asyncpg://neondb_owner:npg_q8hzxfpcvj2m@ep-twilight-sound-ai3i3gq1-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require"
     
     @property
     def ASYNC_DATABASE_URL(self) -> str:
@@ -37,8 +37,8 @@ class Settings(BaseSettings):
         return url
     
     # CORS
-    FRONTEND_URL: str = "http://localhost:5173"
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    FRONTEND_URL: str = "https://banquito.vercel.app"
+    ALLOWED_ORIGINS: list[str] = ["https://banquito.vercel.app", "http://localhost:5173", "http://localhost:3000"]
     
     @property
     def CORS_ORIGINS(self) -> list[str]:
@@ -51,10 +51,10 @@ class Settings(BaseSettings):
     CURRENT_USER_ID: str = "550e8400-e29b-41d4-a716-446655440000"
     CURRENT_USER_EMAIL: str = "demo@banquito.app"
     
-    # Clerk Authentication
+    # Clerk Authentication (Defaults for production fallback)
     CLERK_PEM_PUBLIC_KEY: str = ""
-    CLERK_ISSUER: str = ""
-    CLERK_JWKS_URL: str = ""
+    CLERK_ISSUER: str = "https://brief-bee-17.clerk.accounts.dev"
+    CLERK_JWKS_URL: str = "https://brief-bee-17.clerk.accounts.dev/.well-known/jwks.json"
     CLERK_AUDIENCE: str = ""
     
     class Config:
