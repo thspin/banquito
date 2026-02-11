@@ -26,6 +26,9 @@ class ApiClient {
       (config) => {
         if (this.token) {
           config.headers.Authorization = `Bearer ${this.token}`;
+          // console.log(`[ApiClient] Request ${config.method?.toUpperCase()} ${config.url} with token`);
+        } else {
+          console.warn(`[ApiClient] Request ${config.method?.toUpperCase()} ${config.url} without token`);
         }
         return config;
       },
