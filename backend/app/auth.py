@@ -71,7 +71,10 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Securi
             # Diagnostic info: show which keys were empty
             empty_keys = [k for k, v in config.items() if not v]
             print(f"Auth Error: Server auth configuration missing. Env: {app_env}. Empty keys: {empty_keys}")
-            raise HTTPException(status_code=500, detail=f"Server auth configuration missing (Env: {app_env})")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Server auth configuration missing (Env: {app_env}). Missing keys: {', '.join(empty_keys)}"
+            )
 
         # Prepare verification options
         decode_options = {
