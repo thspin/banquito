@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "Banquito API"
     APP_ENV: str = "production"
-    DEBUG: bool = False
+    DEBUG: bool = True
     VERSION: str = "1.0.0"
     
     # Database
