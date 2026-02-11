@@ -11,6 +11,7 @@ class ApiClient {
   private client: AxiosInstance;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private readonly REQUEST_DEDUP_TTL = 5000; // 5 seconds
+  private token: string | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -23,7 +24,9 @@ class ApiClient {
     // Request interceptor
     this.client.interceptors.request.use(
       (config) => {
-        // Add auth token if needed in the future
+        if (this.token) {
+          config.headers.Authorization = `Bearer ${this.token}`;
+        }
         return config;
       },
       (error) => {
@@ -41,6 +44,13 @@ class ApiClient {
         return Promise.reject(error);
       }
     );
+  }
+
+  /**
+   * Set the authentication token for all subsequent requests
+   */
+  public setToken(token: string | null): void {
+    this.token = token;
   }
 
   /**
@@ -71,9 +81,9 @@ class ApiClient {
     config?: AxiosRequestConfig
   ): Promise<T> {
     this.cleanupPendingRequests();
-    
+
     const key = this.getRequestKey(method, url, config?.params, config?.data);
-    
+
     // Check if there's a pending identical request
     const pending = this.pendingRequests.get(key);
     if (pending) {

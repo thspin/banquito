@@ -1,9 +1,36 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ClerkProvider, SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
+import { ClerkProvider, SignedIn, SignedOut, SignIn, useAuth } from "@clerk/clerk-react";
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
+import { apiClient } from './api/client';
 import Dashboard from './pages/Dashboard';
+import { useEffect } from 'react';
+
+// Component to sync Clerk token with ApiClient
+const TokenSync = () => {
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    const updateToken = async () => {
+      try {
+        const token = await getToken();
+        apiClient.setToken(token);
+      } catch (error) {
+        console.error("Error syncing auth token:", error);
+        apiClient.setToken(null);
+      }
+    };
+
+    updateToken();
+
+    // Refresh token every minute to keep it fresh in the ApiClient
+    const interval = setInterval(updateToken, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [getToken]);
+
+  return null;
+};
 import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
 // import Services from './pages/Services';
@@ -30,6 +57,7 @@ function App() {
         <ToastProvider>
           <BrowserRouter>
             <SignedIn>
+              <TokenSync />
               <Layout>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
