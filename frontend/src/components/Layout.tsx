@@ -9,6 +9,7 @@ const navItems = [
   { path: '/budgets', label: 'Presupuestos', icon: '📋', isLocked: true },
   { path: '/calendar', label: 'Calendario', icon: '📆', isLocked: true },
   { path: '/rentals', label: 'Alquileres', icon: '🏠', isLocked: true },
+  { path: '/bot', label: 'Banquito BOT', icon: '🤖', isLocked: true },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -35,12 +36,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-          <p className="px-4 text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] mb-2 mt-2">Menú Principal</p>
-
           {navItems.map((item) => (
             item.isLocked ? (
               <div
-                key={item.path}
+                key={item.label}
                 className="flex items-center justify-between px-4 py-2.5 rounded-xl text-white/[0.25] select-none"
               >
                 <div className="flex items-center gap-3">
@@ -67,12 +66,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             )
           ))}
+        </nav>
 
-          <div className="mt-8 mb-2">
-            <div className="h-px bg-white/5 mx-4" />
-          </div>
-
-          <p className="px-4 text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] mb-2">Preferencias</p>
+        <div className="p-4 border-t border-white/5 bg-white/[0.01] flex flex-col gap-4">
           <Link
             to="/settings"
             className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${location.pathname === '/settings'
@@ -83,9 +79,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <span className="text-lg group-hover:rotate-45 transition-transform duration-300">⚙️</span>
             <span className="text-sm font-medium">Configuración</span>
           </Link>
-        </nav>
 
-        <div className="p-4 border-t border-white/5 bg-white/[0.01]">
           <div className="bg-white/[0.03] border border-white/5 p-3 rounded-2xl flex items-center gap-3 group hover:bg-white/[0.05] transition-colors duration-200 cursor-pointer">
             <div className="relative">
               <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 border border-white/10" } }} />
