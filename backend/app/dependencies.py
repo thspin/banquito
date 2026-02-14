@@ -1,7 +1,7 @@
 """Application dependencies for FastAPI."""
 
 from typing import AsyncGenerator
-from uuid import UUID
+from uuid import UUID, uuid5, NAMESPACE_URL
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,8 +27,17 @@ from app.auth import get_current_user_id as get_clerk_user_id
 async def get_current_user_id(user_id: str = Depends(get_clerk_user_id)) -> UUID:
     """
     Get current user ID from Clerk token.
+    Clerk user IDs are strings like 'user_2nXXX', not UUIDs.
+    We generate a deterministic UUID5 from the Clerk ID so the same
+    Clerk user always maps to the same database UUID.
     """
-    return UUID(user_id)
+    try:
+        # First, try to parse as a real UUID (in case it already is one)
+        return UUID(user_id)
+    except (ValueError, AttributeError):
+        # Clerk IDs are not UUIDs (e.g. 'user_2nXXX'), so generate a
+        # deterministic UUID5 from the string
+        return uuid5(NAMESPACE_URL, user_id)
 
 
 from sqlalchemy import select

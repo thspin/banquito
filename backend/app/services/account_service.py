@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 
 from app.models import (
     FinancialInstitution,
@@ -67,16 +68,35 @@ class AccountService:
         user_id: UUID
     ) -> FinancialInstitution:
         """Create a new institution."""
+        # Check if already exists
+        query = select(FinancialInstitution).where(
+            and_(
+                FinancialInstitution.user_id == user_id,
+                FinancialInstitution.name == data.name
+            )
+        )
+        result = await self.db.execute(query)
+        if result.scalar_one_or_none():
+            raise ValueError(f"Ya existe una institución con el nombre '{data.name}'")
+
         institution = FinancialInstitution(
             name=data.name,
             institution_type=data.institution_type,
             share_summary=data.share_summary,
             user_id=user_id
         )
-        self.db.add(institution)
-        await self.db.commit()
-        await self.db.refresh(institution)
-        return institution
+        
+        try:
+            self.db.add(institution)
+            await self.db.commit()
+            await self.db.refresh(institution)
+            return institution
+        except IntegrityError:
+            await self.db.rollback()
+            raise ValueError(f"Error de integridad: Posiblemente ya existe una institución con el nombre '{data.name}'")
+        except Exception as e:
+            await self.db.rollback()
+            raise e
     
     async def update_institution(
         self,
@@ -171,6 +191,10 @@ class AccountService:
                     FinancialProduct.user_id == user_id
                 )
             )
+            .options(
+                selectinload(FinancialProduct.institution),
+                selectinload(FinancialProduct.linked_product)
+            )
         )
         return result.scalar_one_or_none()
     
@@ -184,24 +208,37 @@ class AccountService:
         if data.institution_id:
             institution = await self.get_institution(data.institution_id, user_id)
             if not institution:
-                raise ValueError("Institution not found")
+                raise ValueError("La institución seleccionada no existe")
         
         # Validate linked product for debit cards
         if data.product_type == ProductType.DEBIT_CARD and data.linked_product_id:
             linked_product = await self.get_product(data.linked_product_id, user_id)
             if not linked_product:
-                raise ValueError("Linked product not found")
+                raise ValueError("El producto vinculado no existe")
             if linked_product.product_type not in [
                 ProductType.SAVINGS_ACCOUNT,
                 ProductType.CHECKING_ACCOUNT
             ]:
-                raise ValueError("Debit card must be linked to a savings or checking account")
+                raise ValueError("La tarjeta de débito debe estar vinculada a una caja de ahorro o cuenta corriente")
         
         # Validate credit card fields
         if data.product_type == ProductType.CREDIT_CARD:
             if data.closing_day is None or data.due_day is None:
-                raise ValueError("Credit cards must have closing and due days")
+                raise ValueError("Las tarjetas de crédito deben tener día de cierre y de vencimiento")
         
+        # Check if already exists (unique name per institution + currency)
+        query = select(FinancialProduct).where(
+            and_(
+                FinancialProduct.user_id == user_id,
+                FinancialProduct.institution_id == data.institution_id,
+                FinancialProduct.name == data.name,
+                FinancialProduct.currency == data.currency
+            )
+        )
+        result = await self.db.execute(query)
+        if result.scalar_one_or_none():
+            raise ValueError(f"Ya existe un producto con el nombre '{data.name}' y moneda '{data.currency}' en esta institución")
+
         product = FinancialProduct(
             name=data.name,
             product_type=data.product_type,
@@ -222,10 +259,17 @@ class AccountService:
             user_id=user_id
         )
         
-        self.db.add(product)
-        await self.db.commit()
-        await self.db.refresh(product)
-        return product
+        try:
+            self.db.add(product)
+            await self.db.commit()
+            await self.db.refresh(product)
+            return product
+        except IntegrityError:
+            await self.db.rollback()
+            raise ValueError(f"Error de integridad: Posiblemente ya existe un producto con el nombre '{data.name}' en esta institución")
+        except Exception as e:
+            await self.db.rollback()
+            raise e
     
     async def update_product(
         self,

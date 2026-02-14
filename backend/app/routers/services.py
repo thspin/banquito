@@ -6,7 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db, get_current_user_id
+from app.dependencies import get_db, get_current_user
+from app.models import User
 from app.services import ServiceBillService
 from app.schemas import (
     ServiceCreate,
@@ -29,11 +30,11 @@ router = APIRouter(prefix="/services", tags=["services"])
 async def list_services(
     active_only: bool = True,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get all services for the current user."""
     service = ServiceBillService(db)
-    services = await service.get_services(user_id, active_only)
+    services = await service.get_services(user.id, active_only)
     return services
 
 
@@ -41,11 +42,11 @@ async def list_services(
 async def create_service(
     data: ServiceCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Create a new recurring service."""
     service = ServiceBillService(db)
-    new_service = await service.create_service(data, user_id)
+    new_service = await service.create_service(data, user.id)
     return new_service
 
 
@@ -53,11 +54,11 @@ async def create_service(
 async def get_service(
     service_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get a specific service by ID."""
     service = ServiceBillService(db)
-    result = await service.get_service(service_id, user_id)
+    result = await service.get_service(service_id, user.id)
     
     if not result:
         raise HTTPException(
@@ -73,11 +74,11 @@ async def update_service(
     service_id: UUID,
     data: ServiceUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Update a service."""
     service = ServiceBillService(db)
-    updated = await service.update_service(service_id, data, user_id)
+    updated = await service.update_service(service_id, data, user.id)
     
     if not updated:
         raise HTTPException(
@@ -92,11 +93,11 @@ async def update_service(
 async def delete_service(
     service_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Delete a service."""
     service = ServiceBillService(db)
-    deleted = await service.delete_service(service_id, user_id)
+    deleted = await service.delete_service(service_id, user.id)
     
     if not deleted:
         raise HTTPException(
@@ -115,11 +116,11 @@ async def list_bills(
     month: int = None,
     status: str = None,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get bills with optional filters."""
     service = ServiceBillService(db)
-    bills = await service.get_bills(user_id, year, month, status)
+    bills = await service.get_bills(user.id, year, month, status)
     return bills
 
 
@@ -128,7 +129,7 @@ async def get_monthly_bills(
     year: int,
     month: int,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """
     Get or create bills for a specific month.
@@ -136,7 +137,7 @@ async def get_monthly_bills(
     Automatically creates bills for all active services if they don't exist.
     """
     service = ServiceBillService(db)
-    bills = await service.get_or_create_monthly_bills(user_id, year, month)
+    bills = await service.get_or_create_monthly_bills(user.id, year, month)
     return bills
 
 
@@ -144,13 +145,13 @@ async def get_monthly_bills(
 async def create_bill(
     data: ServiceBillCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Create a new bill manually."""
     service = ServiceBillService(db)
     
     try:
-        bill = await service.create_bill(data, user_id)
+        bill = await service.create_bill(data, user.id)
         return bill
     except ValueError as e:
         raise HTTPException(
@@ -163,11 +164,11 @@ async def create_bill(
 async def get_bill(
     bill_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get a specific bill by ID."""
     service = ServiceBillService(db)
-    bill = await service.get_bill(bill_id, user_id)
+    bill = await service.get_bill(bill_id, user.id)
     
     if not bill:
         raise HTTPException(
@@ -183,11 +184,11 @@ async def update_bill(
     bill_id: UUID,
     data: ServiceBillUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Update a bill."""
     service = ServiceBillService(db)
-    updated = await service.update_bill(bill_id, data, user_id)
+    updated = await service.update_bill(bill_id, data, user.id)
     
     if not updated:
         raise HTTPException(
@@ -203,13 +204,13 @@ async def pay_bill(
     bill_id: UUID,
     data: ServiceBillPayRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Pay a bill, creating a transaction."""
     service = ServiceBillService(db)
     
     try:
-        transaction = await service.pay_bill(bill_id, data, user_id)
+        transaction = await service.pay_bill(bill_id, data, user.id)
         return transaction
     except ValueError as e:
         raise HTTPException(
@@ -222,13 +223,13 @@ async def pay_bill(
 async def skip_bill(
     bill_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Mark a bill as skipped (won't pay this month)."""
     service = ServiceBillService(db)
     
     try:
-        bill = await service.skip_bill(bill_id, user_id)
+        bill = await service.skip_bill(bill_id, user.id)
         
         if not bill:
             raise HTTPException(
@@ -248,11 +249,11 @@ async def skip_bill(
 async def delete_bill(
     bill_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Delete a bill."""
     service = ServiceBillService(db)
-    deleted = await service.delete_bill(bill_id, user_id)
+    deleted = await service.delete_bill(bill_id, user.id)
     
     if not deleted:
         raise HTTPException(

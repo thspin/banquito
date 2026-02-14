@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db, get_current_user_id
-from app.models import Category, CategoryType
+from app.dependencies import get_db, get_current_user
+from app.models import Category, CategoryType, User
 from app.schemas import (
     CategoryCreate,
     CategoryUpdate,
@@ -23,10 +23,10 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 async def list_categories(
     category_type: str = None,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get all categories for the current user."""
-    query = select(Category).where(Category.user_id == user_id)
+    query = select(Category).where(Category.user_id == user.id)
     
     if category_type:
         query = query.where(Category.category_type == category_type)
@@ -40,7 +40,7 @@ async def list_categories(
 async def create_category(
     data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Create a new category."""
     # Check if category with same name already exists
@@ -49,7 +49,7 @@ async def create_category(
         .where(
             and_(
                 Category.name == data.name,
-                Category.user_id == user_id
+                Category.user_id == user.id
             )
         )
     )
@@ -64,7 +64,7 @@ async def create_category(
         icon=data.icon,
         category_type=data.category_type,
         is_system=False,
-        user_id=user_id
+        user_id=user.id
     )
     
     db.add(category)
@@ -77,7 +77,7 @@ async def create_category(
 async def get_category(
     category_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get a specific category by ID."""
     result = await db.execute(
@@ -85,7 +85,7 @@ async def get_category(
         .where(
             and_(
                 Category.id == category_id,
-                Category.user_id == user_id
+                Category.user_id == user.id
             )
         )
     )
@@ -105,7 +105,7 @@ async def update_category(
     category_id: UUID,
     data: CategoryUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Update a category."""
     result = await db.execute(
@@ -113,7 +113,7 @@ async def update_category(
         .where(
             and_(
                 Category.id == category_id,
-                Category.user_id == user_id
+                Category.user_id == user.id
             )
         )
     )
@@ -134,7 +134,7 @@ async def update_category(
             .where(
                 and_(
                     Category.name == data.name,
-                    Category.user_id == user_id,
+                    Category.user_id == user.id,
                     Category.id != category_id
                 )
             )
@@ -158,7 +158,7 @@ async def update_category(
 async def delete_category(
     category_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Delete a category."""
     result = await db.execute(
@@ -166,7 +166,7 @@ async def delete_category(
         .where(
             and_(
                 Category.id == category_id,
-                Category.user_id == user_id
+                Category.user_id == user.id
             )
         )
     )
@@ -206,7 +206,7 @@ async def delete_category(
 @router.post("/seed", response_model=dict)
 async def seed_default_categories(
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Create default categories for a new user."""
     default_categories = [
@@ -237,7 +237,7 @@ async def seed_default_categories(
             .where(
                 and_(
                     Category.name == cat_data["name"],
-                    Category.user_id == user_id
+                    Category.user_id == user.id
                 )
             )
         )
@@ -247,7 +247,7 @@ async def seed_default_categories(
                 icon=cat_data["icon"],
                 category_type=cat_data["type"],
                 is_system=True,
-                user_id=user_id
+                user_id=user.id
             )
             db.add(category)
             created.append(cat_data["name"])

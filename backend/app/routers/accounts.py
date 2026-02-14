@@ -6,7 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db, get_current_user_id
+from app.dependencies import get_db, get_current_user
+from app.models import User
 from app.services import AccountService
 from app.schemas import (
     FinancialInstitutionCreate,
@@ -29,11 +30,11 @@ router = APIRouter(prefix="/accounts", tags=["accounts"])
 @router.get("/institutions", response_model=List[FinancialInstitutionResponse])
 async def list_institutions(
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get all financial institutions for the current user."""
     service = AccountService(db)
-    institutions = await service.get_institutions(user_id)
+    institutions = await service.get_institutions(user.id)
     return institutions
 
 
@@ -41,23 +42,29 @@ async def list_institutions(
 async def create_institution(
     data: FinancialInstitutionCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Create a new financial institution."""
     service = AccountService(db)
-    institution = await service.create_institution(data, user_id)
-    return institution
+    try:
+        institution = await service.create_institution(data, user.id)
+        return institution
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.get("/institutions/{institution_id}", response_model=FinancialInstitutionResponse)
 async def get_institution(
     institution_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get a specific institution by ID."""
     service = AccountService(db)
-    institution = await service.get_institution(institution_id, user_id)
+    institution = await service.get_institution(institution_id, user.id)
     
     if not institution:
         raise HTTPException(
@@ -73,11 +80,11 @@ async def update_institution(
     institution_id: UUID,
     data: FinancialInstitutionUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Update an institution."""
     service = AccountService(db)
-    institution = await service.update_institution(institution_id, data, user_id)
+    institution = await service.update_institution(institution_id, data, user.id)
     
     if not institution:
         raise HTTPException(
@@ -92,11 +99,11 @@ async def update_institution(
 async def delete_institution(
     institution_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Delete an institution."""
     service = AccountService(db)
-    deleted = await service.delete_institution(institution_id, user_id)
+    deleted = await service.delete_institution(institution_id, user.id)
     
     if not deleted:
         raise HTTPException(
@@ -113,11 +120,11 @@ async def delete_institution(
 async def list_products(
     institution_id: UUID = None,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get all financial products for the current user."""
     service = AccountService(db)
-    products = await service.get_products(user_id, institution_id)
+    products = await service.get_products(user.id, institution_id)
     return products
 
 
@@ -125,13 +132,13 @@ async def list_products(
 async def create_product(
     data: FinancialProductCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Create a new financial product."""
     service = AccountService(db)
     
     try:
-        product = await service.create_product(data, user_id)
+        product = await service.create_product(data, user.id)
         return product
     except ValueError as e:
         raise HTTPException(
@@ -144,11 +151,11 @@ async def create_product(
 async def get_product(
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get a specific product by ID with details."""
     service = AccountService(db)
-    product = await service.get_product(product_id, user_id)
+    product = await service.get_product(product_id, user.id)
     
     if not product:
         raise HTTPException(
@@ -164,11 +171,11 @@ async def update_product(
     product_id: UUID,
     data: FinancialProductUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Update a product."""
     service = AccountService(db)
-    product = await service.update_product(product_id, data, user_id)
+    product = await service.update_product(product_id, data, user.id)
     
     if not product:
         raise HTTPException(
@@ -183,11 +190,11 @@ async def update_product(
 async def delete_product(
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Delete a product."""
     service = AccountService(db)
-    deleted = await service.delete_product(product_id, user_id)
+    deleted = await service.delete_product(product_id, user.id)
     
     if not deleted:
         raise HTTPException(
@@ -203,13 +210,13 @@ async def delete_product(
 @router.get("/institutions-with-products", response_model=List[InstitutionWithProductsResponse])
 async def list_institutions_with_products(
     db: AsyncSession = Depends(get_db),
-    user_id: UUID = Depends(get_current_user_id)
+    user: User = Depends(get_current_user)
 ):
     """Get all institutions with their products."""
     service = AccountService(db)
     
     # Get all institutions
-    institutions = await service.get_institutions(user_id)
+    institutions = await service.get_institutions(user.id)
     
     if not institutions:
         return []
@@ -219,7 +226,7 @@ async def list_institutions_with_products(
     
     # Fetch all products for all institutions in a single query (avoids N+1)
     products_by_institution = await service.get_products_by_institutions_batch(
-        user_id, institution_ids
+        user.id, institution_ids
     )
     
     # Assign products to institutions
