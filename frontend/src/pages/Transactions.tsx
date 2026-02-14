@@ -7,10 +7,13 @@ import { Card } from '@/components/ui/Card';
 import type { Transaction, FinancialProduct, Category, TransactionType } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useToast } from '@/components/ui/Toast';
 
 export default function Transactions() {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [showForm, setShowForm] = useState(false);
+  const [filterType, setFilterType] = useState<string>('ALL');
 
   const { data: transactions } = useQuery({
     queryKey: ['transactions'],
@@ -32,7 +35,12 @@ export default function Transactions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      showToast('Transacción registrada', 'success');
       setShowForm(false);
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail || 'Error al crear transacción';
+      showToast(message, 'error');
     },
   });
 
@@ -52,108 +60,270 @@ export default function Transactions() {
     });
   };
 
-  const transactionTypes: Record<string, string> = {
-    EXPENSE: 'Gasto',
-    INCOME: 'Ingreso',
-    TRANSFER: 'Transferencia',
+  const transactionTypeConfig: Record<string, { label: string; icon: string; color: string }> = {
+    EXPENSE: { label: 'Gasto', icon: '↓', color: 'red' },
+    INCOME: { label: 'Ingreso', icon: '↑', color: 'emerald' },
+    TRANSFER: { label: 'Transferencia', icon: '↔', color: 'blue' },
+  };
+
+  const filteredTransactions = transactions?.filter(tx =>
+    filterType === 'ALL' ? true : tx.transaction_type === filterType
+  ) || [];
+
+  // Summary calculations
+  const totalIncome = transactions?.filter(t => t.transaction_type === 'INCOME').reduce((s, t) => s + t.amount, 0) || 0;
+  const totalExpense = transactions?.filter(t => t.transaction_type === 'EXPENSE').reduce((s, t) => s + t.amount, 0) || 0;
+  const transactionCount = transactions?.length || 0;
+
+  // Group transactions by date
+  const groupedTransactions = new Map<string, Transaction[]>();
+  filteredTransactions.forEach(tx => {
+    const dateKey = format(new Date(tx.date), 'yyyy-MM-dd');
+    if (!groupedTransactions.has(dateKey)) {
+      groupedTransactions.set(dateKey, []);
+    }
+    groupedTransactions.get(dateKey)!.push(tx);
+  });
+
+  // Sort date groups in descending order
+  const sortedDateGroups = Array.from(groupedTransactions.entries())
+    .sort(([a], [b]) => b.localeCompare(a));
+
+  // Get product name helper
+  const getProductName = (productId: string) => {
+    const product = products?.find(p => p.id === productId);
+    return product?.name || '—';
+  };
+
+  // Get category info helper
+  const getCategoryInfo = (categoryId?: string) => {
+    if (!categoryId) return null;
+    return categories?.find(c => c.id === categoryId);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Transacciones</h1>
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* Header */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <p className="text-primary-400 font-medium mb-1 text-sm">Registro financiero</p>
+          <h1 className="text-4xl font-bold text-white tracking-tight">Transacciones</h1>
+        </div>
         <button
           onClick={() => setShowForm(true)}
-          className="glass-button-primary"
+          className="glass-button-primary flex items-center gap-2"
         >
-          + Nueva Transacción
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Nueva Transacción
         </button>
+      </header>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <Card className="relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300">
+          <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+            </svg>
+          </div>
+          <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">Ingresos Totales</p>
+          <p className="text-3xl font-bold text-emerald-400">
+            +${totalIncome.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-[10px] text-white/30 mt-2 font-medium">Suma de todos los ingresos</p>
+        </Card>
+
+        <Card className="relative overflow-hidden group hover:border-red-500/30 transition-all duration-300">
+          <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+            </svg>
+          </div>
+          <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">Gastos Totales</p>
+          <p className="text-3xl font-bold text-red-400">
+            -${totalExpense.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-[10px] text-white/30 mt-2 font-medium">Suma de todos los egresos</p>
+        </Card>
+
+        <Card className="relative overflow-hidden group hover:border-primary-500/30 transition-all duration-300">
+          <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+          </div>
+          <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">Movimientos</p>
+          <p className="text-3xl font-bold text-white">{transactionCount}</p>
+          <p className="text-[10px] text-white/30 mt-2 font-medium">Transacciones registradas</p>
+        </Card>
       </div>
 
-      {/* Transactions List */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left py-3 px-4 text-white/60 font-medium">Fecha</th>
-                <th className="text-left py-3 px-4 text-white/60 font-medium">Descripción</th>
-                <th className="text-left py-3 px-4 text-white/60 font-medium">Categoría</th>
-                <th className="text-right py-3 px-4 text-white/60 font-medium">Monto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions?.map((tx: Transaction) => (
-                <tr key={tx.id} className="border-b border-white/5 hover:bg-white/5">
-                  <td className="py-3 px-4 text-white">
-                    {format(new Date(tx.date), 'dd/MM/yyyy', { locale: es })}
-                  </td>
-                  <td className="py-3 px-4 text-white">
-                    {tx.description}
-                    {tx.installment_total && (
-                      <span className="text-white/50 text-sm ml-2">
-                        ({tx.installment_number}/{tx.installment_total})
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded text-xs ${tx.transaction_type === 'INCOME'
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-red-500/20 text-red-400'
-                      }`}>
-                      {transactionTypes[tx.transaction_type]}
-                    </span>
-                  </td>
-                  <td className={`py-3 px-4 text-right font-semibold ${tx.transaction_type === 'INCOME' ? 'text-green-400' : 'text-white'
-                    }`}>
-                    {tx.transaction_type === 'INCOME' ? '+' : '-'}
-                    ${tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Filter Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/[0.06] w-fit">
+        {[
+          { key: 'ALL', label: 'Todos' },
+          { key: 'INCOME', label: 'Ingresos' },
+          { key: 'EXPENSE', label: 'Gastos' },
+          { key: 'TRANSFER', label: 'Transferencias' },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setFilterType(tab.key)}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${filterType === tab.key
+              ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/30'
+              : 'text-white/50 hover:text-white/80 hover:bg-white/[0.04]'
+              }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Transaction List — grouped by date */}
+      {sortedDateGroups.length > 0 ? (
+        <div className="space-y-6">
+          {sortedDateGroups.map(([dateKey, txs]) => (
+            <div key={dateKey}>
+              {/* Date header */}
+              <div className="flex items-center gap-3 mb-3 px-2">
+                <p className="text-white/50 text-xs font-semibold uppercase tracking-wider">
+                  {format(new Date(dateKey + 'T12:00:00'), "EEEE, d 'de' MMMM", { locale: es })}
+                </p>
+                <div className="flex-1 h-px bg-white/[0.06]" />
+                <p className="text-white/30 text-xs">
+                  {txs.length} {txs.length === 1 ? 'movimiento' : 'movimientos'}
+                </p>
+              </div>
+
+              {/* Transaction items */}
+              <div className="space-y-2">
+                {txs.map((tx: Transaction) => {
+                  const typeConfig = transactionTypeConfig[tx.transaction_type];
+                  const category = getCategoryInfo(tx.category_id);
+                  const isIncome = tx.transaction_type === 'INCOME';
+
+                  return (
+                    <div
+                      key={tx.id}
+                      className="group flex items-center gap-4 px-5 py-4 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-2xl transition-all duration-200"
+                    >
+                      {/* Type Icon */}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 border ${typeConfig.color === 'red' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+                        typeConfig.color === 'emerald' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                          'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                        }`}>
+                        {category?.icon || typeConfig.icon}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-white font-medium truncate">{tx.description}</p>
+                          {tx.installment_total && tx.installment_total > 1 && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/[0.06] text-white/40 flex-shrink-0">
+                              {tx.installment_number}/{tx.installment_total}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-white/40 text-xs truncate">
+                            {tx.from_product_id ? getProductName(tx.from_product_id) : '—'}
+                          </p>
+                          {category && (
+                            <>
+                              <span className="text-white/20">·</span>
+                              <span className="text-white/40 text-xs">{category.name}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Amount */}
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-lg font-bold ${isIncome ? 'text-emerald-400' : 'text-white'
+                          }`}>
+                          {isIncome ? '+' : '-'}${tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
-      </Card>
+      ) : (
+        /* Empty State */
+        <Card className="flex flex-col items-center justify-center py-20 text-center border border-white/10 bg-white/[0.01]">
+          <div className="w-24 h-24 bg-primary-500/10 rounded-full flex items-center justify-center mb-8 relative">
+            <div className="absolute inset-0 bg-primary-500/20 blur-2xl rounded-full" />
+            <svg className="w-12 h-12 text-primary-400 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">Sin transacciones</h3>
+          <p className="text-white/40 max-w-sm mb-10 leading-relaxed font-medium">
+            Registrá tus ingresos y gastos para tener un control detallado de tu flujo financiero.
+          </p>
+          <button
+            onClick={() => setShowForm(true)}
+            className="glass-button-primary px-8 py-3 text-lg hover:scale-105 transition-transform shadow-xl shadow-primary-900/40"
+          >
+            Registrar mi primer movimiento
+          </button>
+        </Card>
+      )}
 
       {/* Create Transaction Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="glass-card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-semibold text-white mb-4">
-              Nueva Transacción
-            </h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setShowForm(false)}>
+          <div className="glass-card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto animate-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Nueva Transacción</h2>
+                <p className="text-white/40 text-xs">Registrá un ingreso o gasto</p>
+              </div>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-white/70 text-sm mb-1">Tipo</label>
+                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Tipo</label>
                 <select name="transaction_type" required className="glass-input w-full">
-                  <option value="EXPENSE">Gasto</option>
-                  <option value="INCOME">Ingreso</option>
+                  <option value="EXPENSE">↓ Gasto</option>
+                  <option value="INCOME">↑ Ingreso</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-white/70 text-sm mb-1">Monto</label>
-                <input
-                  name="amount"
-                  type="number"
-                  step="0.01"
-                  required
-                  className="glass-input w-full"
-                  placeholder="0.00"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Monto</label>
+                  <input
+                    name="amount"
+                    type="number"
+                    step="0.01"
+                    required
+                    className="glass-input w-full"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Fecha</label>
+                  <input
+                    name="date"
+                    type="date"
+                    required
+                    defaultValue={new Date().toISOString().split('T')[0]}
+                    className="glass-input w-full"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-white/70 text-sm mb-1">Fecha</label>
-                <input
-                  name="date"
-                  type="date"
-                  required
-                  defaultValue={new Date().toISOString().split('T')[0]}
-                  className="glass-input w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-white/70 text-sm mb-1">Descripción</label>
+                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Descripción</label>
                 <input
                   name="description"
                   type="text"
@@ -163,9 +333,9 @@ export default function Transactions() {
                 />
               </div>
               <div>
-                <label className="block text-white/70 text-sm mb-1">Producto</label>
+                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Producto</label>
                 <select name="from_product_id" required className="glass-input w-full">
-                  <option value="">Seleccionar...</option>
+                  <option value="">Seleccionar cuenta...</option>
                   {products?.map((p: FinancialProduct) => (
                     <option key={p.id} value={p.id}>
                       {p.name} (${p.balance.toFixed(2)})
@@ -174,7 +344,7 @@ export default function Transactions() {
                 </select>
               </div>
               <div>
-                <label className="block text-white/70 text-sm mb-1">Categoría</label>
+                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Categoría</label>
                 <select name="category_id" className="glass-input w-full">
                   <option value="">Sin categoría</option>
                   {categories?.map((c: Category) => (
@@ -184,33 +354,37 @@ export default function Transactions() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-white/70 text-sm mb-1">Cuotas</label>
-                <input
-                  name="installments"
-                  type="number"
-                  min="1"
-                  max="48"
-                  defaultValue="1"
-                  className="glass-input w-full"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  name="plan_z"
-                  type="checkbox"
-                  id="plan_z"
-                  className="w-4 h-4"
-                />
-                <label htmlFor="plan_z" className="text-white/70 text-sm">
-                  Plan Z (3 pagos sin interés)
-                </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Cuotas</label>
+                  <input
+                    name="installments"
+                    type="number"
+                    min="1"
+                    max="48"
+                    defaultValue="1"
+                    className="glass-input w-full"
+                  />
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-2.5 cursor-pointer group">
+                    <input
+                      name="plan_z"
+                      type="checkbox"
+                      id="plan_z"
+                      className="w-4 h-4 rounded border-white/20 bg-white/5 accent-primary-500"
+                    />
+                    <span className="text-white/60 text-xs font-medium group-hover:text-white/80 transition-colors">
+                      Plan Z (3 sin interés)
+                    </span>
+                  </label>
+                </div>
               </div>
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="glass-button flex-1"
+                  className="flex-1 bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white transition-all"
                 >
                   Cancelar
                 </button>
@@ -219,7 +393,7 @@ export default function Transactions() {
                   className="glass-button-primary flex-1"
                   disabled={createMutation.isPending}
                 >
-                  {createMutation.isPending ? 'Creando...' : 'Crear'}
+                  {createMutation.isPending ? 'Registrando...' : 'Registrar'}
                 </button>
               </div>
             </form>
