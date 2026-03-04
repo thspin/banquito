@@ -110,75 +110,30 @@ class TransactionService:
         if product.product_type != ProductType.CREDIT_CARD:
             return
         
-        # Check if product has any limits set
-        has_limits = (
-            product.limit_amount is not None or
-            product.limit_single_payment is not None or
-            product.limit_installments is not None
-        )
-        
-        if not has_limits:
-            return
-        
         available = product.available_limit
         
-        if product.unified_limit:
-            # Unified limit check
-            if available < amount:
-                raise ValueError(
-                    f"Insufficient credit limit. Available: ${float(available):.2f}, "
-                    f"Required: ${float(amount):.2f}"
-                )
-        else:
-            # Separate limits for single payment and installments
-            if is_installment:
-                limit = product.limit_installments or product.limit_amount or Decimal("0")
-                current_balance = abs(product.balance) if product.balance < 0 else Decimal("0")
-                available_installment = limit - current_balance
-                
-                if available_installment < amount:
-                    raise ValueError(
-                        f"Insufficient installment limit. Available: ${float(available_installment):.2f}, "
-                        f"Required: ${float(amount):.2f}"
-                    )
-            else:
-                limit = product.limit_single_payment or product.limit_amount or Decimal("0")
-                current_balance = abs(product.balance) if product.balance < 0 else Decimal("0")
-                available_single = limit - current_balance
-                
-                if available_single < amount:
-                    raise ValueError(
-                        f"Insufficient single payment limit. Available: ${float(available_single):.2f}, "
-                        f"Required: ${float(amount):.2f}"
-                    )
+        if available < amount:
+            raise ValueError(
+                f"Insufficient credit limit. Available: ${float(available):.2f}, "
+                f"Required: ${float(amount):.2f}"
+            )
     
     async def _update_product_balance(
         self,
         product: FinancialProduct,
-        amount_change: Decimal
+        amount_change: Decimal,
+        user_id: UUID
     ) -> None:
         """Update product balance."""
-        product.balance += amount_change
+        if product.product_type == ProductType.DEBIT_CARD and product.linked_product_id:
+            linked_product = await self._get_product(product.linked_product_id, user_id)
+            if linked_product:
+                linked_product.balance += amount_change
+        else:
+            product.balance += amount_change
         
-        # Update limits for credit cards
-        if product.product_type == ProductType.CREDIT_CARD:
-            has_limits = (
-                product.limit_single_payment is not None or
-                product.limit_installments is not None or
-                product.limit_amount is not None
-            )
-            
-            if has_limits:
-                if product.unified_limit:
-                    if product.limit_single_payment is not None:
-                        product.limit_single_payment += amount_change
-                    if product.limit_installments is not None:
-                        product.limit_installments += amount_change
-                else:
-                    # Update the specific limit that was used
-                    # This is simplified - in real scenario track which limit was used
-                    if product.limit_single_payment is not None:
-                        product.limit_single_payment += amount_change
+        # No specific limit updates needed after balance change for simplified model
+        pass
     
     async def create_transaction(
         self,
@@ -265,13 +220,7 @@ class TransactionService:
         
         # Update product balance
         balance_change = -total_amount if data.transaction_type == TransactionType.EXPENSE else total_amount
-        
-        if product.product_type == ProductType.DEBIT_CARD:
-            # Update linked account balance
-            linked_product = await self._get_product(product.linked_product_id, user_id)
-            linked_product.balance += balance_change
-        else:
-            await self._update_product_balance(product, balance_change)
+        await self._update_product_balance(product, balance_change, user_id)
         
         await self.db.commit()
         
@@ -311,13 +260,23 @@ class TransactionService:
         
         # If amount changed, update product balance
         if amount_diff != 0:
-            if transaction.from_product_id:
+            if transaction.transaction_type == TransactionType.EXPENSE and transaction.from_product_id:
                 product = await self._get_product(transaction.from_product_id, user_id)
                 if product:
-                    if transaction.transaction_type == TransactionType.EXPENSE:
-                        await self._update_product_balance(product, -amount_diff)
-                    elif transaction.transaction_type == TransactionType.INCOME:
-                        await self._update_product_balance(product, amount_diff)
+                    await self._update_product_balance(product, -amount_diff, user_id)
+            elif transaction.transaction_type == TransactionType.INCOME and transaction.to_product_id:
+                product = await self._get_product(transaction.to_product_id, user_id)
+                if product:
+                    await self._update_product_balance(product, amount_diff, user_id)
+            elif transaction.transaction_type == TransactionType.TRANSFER:
+                if transaction.from_product_id:
+                    from_product = await self._get_product(transaction.from_product_id, user_id)
+                    if from_product:
+                        await self._update_product_balance(from_product, -amount_diff, user_id)
+                if transaction.to_product_id:
+                    to_product = await self._get_product(transaction.to_product_id, user_id)
+                    if to_product:
+                        await self._update_product_balance(to_product, amount_diff, user_id)
         
         # If part of installment group, update category for all
         if transaction.installment_id and data.category_id is not None:
@@ -343,20 +302,23 @@ class TransactionService:
             return False
         
         # Revert balance changes
-        if transaction.from_product_id:
+        if transaction.transaction_type == TransactionType.EXPENSE and transaction.from_product_id:
             product = await self._get_product(transaction.from_product_id, user_id)
             if product:
-                if transaction.transaction_type == TransactionType.EXPENSE:
-                    # Revert expense - add money back
-                    await self._update_product_balance(product, transaction.amount)
-                elif transaction.transaction_type == TransactionType.INCOME:
-                    # Revert income - subtract money
-                    await self._update_product_balance(product, -transaction.amount)
-        
-        if transaction.to_product_id and transaction.transaction_type == TransactionType.TRANSFER:
+                await self._update_product_balance(product, transaction.amount, user_id)
+        elif transaction.transaction_type == TransactionType.INCOME and transaction.to_product_id:
             product = await self._get_product(transaction.to_product_id, user_id)
             if product:
-                await self._update_product_balance(product, -transaction.amount)
+                await self._update_product_balance(product, -transaction.amount, user_id)
+        elif transaction.transaction_type == TransactionType.TRANSFER:
+            if transaction.from_product_id:
+                from_product = await self._get_product(transaction.from_product_id, user_id)
+                if from_product:
+                    await self._update_product_balance(from_product, transaction.amount, user_id)
+            if transaction.to_product_id:
+                to_product = await self._get_product(transaction.to_product_id, user_id)
+                if to_product:
+                    await self._update_product_balance(to_product, -transaction.amount, user_id)
         
         await self.db.delete(transaction)
         await self.db.commit()
@@ -392,8 +354,8 @@ class TransactionService:
         )
         
         # Update balances
-        from_product.balance -= data.amount
-        to_product.balance += data.amount
+        await self._update_product_balance(from_product, -data.amount, user_id)
+        await self._update_product_balance(to_product, data.amount, user_id)
         
         self.db.add(transaction)
         await self.db.commit()
@@ -472,7 +434,7 @@ class TransactionService:
         for product_id, total_change in products_to_update.items():
             product = await self._get_product(product_id, user_id)
             if product:
-                await self._update_product_balance(product, total_change)
+                await self._update_product_balance(product, total_change, user_id)
         
         await self.db.commit()
         

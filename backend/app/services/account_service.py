@@ -83,6 +83,7 @@ class AccountService:
             name=data.name,
             institution_type=data.institution_type,
             share_summary=data.share_summary,
+            description=data.description,
             user_id=user_id
         )
         
@@ -113,6 +114,8 @@ class AccountService:
             institution.name = data.name
         if data.share_summary is not None:
             institution.share_summary = data.share_summary
+        if data.description is not None:
+            institution.description = data.description
         
         await self.db.commit()
         await self.db.refresh(institution)
@@ -144,6 +147,10 @@ class AccountService:
         
         if product_ids:
             query = query.where(FinancialProduct.id.in_(product_ids))
+        
+        query = query.options(
+            selectinload(FinancialProduct.institution).selectinload(FinancialInstitution.products)
+        )
         
         query = query.order_by(FinancialProduct.name)
         result = await self.db.execute(query)
@@ -192,7 +199,7 @@ class AccountService:
                 )
             )
             .options(
-                selectinload(FinancialProduct.institution),
+                selectinload(FinancialProduct.institution).selectinload(FinancialInstitution.products),
                 selectinload(FinancialProduct.linked_product)
             )
         )
@@ -247,10 +254,6 @@ class AccountService:
             closing_day=data.closing_day,
             due_day=data.due_day,
             limit_amount=data.limit_amount,
-            limit_single_payment=data.limit_single_payment,
-            limit_installments=data.limit_installments,
-            shared_limit=data.shared_limit,
-            unified_limit=data.unified_limit,
             last_four_digits=data.last_four_digits,
             expiration_date=data.expiration_date,
             provider=data.provider,
@@ -285,20 +288,14 @@ class AccountService:
         # Update fields
         if data.name is not None:
             product.name = data.name
+        if data.balance is not None:
+            product.balance = data.balance
         if data.closing_day is not None:
             product.closing_day = data.closing_day
         if data.due_day is not None:
             product.due_day = data.due_day
         if data.limit_amount is not None:
             product.limit_amount = data.limit_amount
-        if data.limit_single_payment is not None:
-            product.limit_single_payment = data.limit_single_payment
-        if data.limit_installments is not None:
-            product.limit_installments = data.limit_installments
-        if data.shared_limit is not None:
-            product.shared_limit = data.shared_limit
-        if data.unified_limit is not None:
-            product.unified_limit = data.unified_limit
         if data.last_four_digits is not None:
             product.last_four_digits = data.last_four_digits
         if data.expiration_date is not None:

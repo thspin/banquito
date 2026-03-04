@@ -12,6 +12,8 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import init_db
+from app.telegram_bot import bot, dp, start_bot, setup_webhook
+import asyncio
 
 
 async def ensure_demo_user():
@@ -38,6 +40,10 @@ async def ensure_demo_user():
             print(f"Could not ensure demo user: {e}")
 
 
+# Track background tasks so the GC doesn't cancel them
+_background_tasks: set = set()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
@@ -52,6 +58,26 @@ async def lifespan(app: FastAPI):
         
         # Ensure demo user exists
         await ensure_demo_user()
+        
+        # Start Telegram Bot
+        if settings.TELEGRAM_BOT_TOKEN:
+            if settings.TELEGRAM_WEBHOOK_URL:
+                # Webhook mode: register with Telegram
+                await setup_webhook(
+                    settings.TELEGRAM_WEBHOOK_URL,
+                    settings.TELEGRAM_WEBHOOK_SECRET,
+                )
+                print(f"Telegram Bot: webhook mode → {settings.TELEGRAM_WEBHOOK_URL}")
+            else:
+                # Polling mode: run in background task.
+                # We keep a reference in _background_tasks so Python's GC
+                # doesn't silently cancel the coroutine.
+                task = asyncio.create_task(start_bot())
+                _background_tasks.add(task)
+                task.add_done_callback(_background_tasks.discard)
+                print("Telegram Bot: polling mode activo (desarrollo local)")
+        else:
+            print("Telegram Bot: TELEGRAM_BOT_TOKEN no configurado — bot deshabilitado")
     except Exception as e:
         print(f"Database initialization warning: {e}")
         # Continue even if DB init fails - tables might already exist
@@ -60,6 +86,9 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     print("Shutting down Banquito API...")
+    # Cancel any remaining background tasks
+    for task in list(_background_tasks):
+        task.cancel()
 
 
 # Create FastAPI application
@@ -119,6 +148,24 @@ app.include_router(transactions.router, prefix="/api")
 app.include_router(summaries.router, prefix="/api")
 app.include_router(services.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
+
+
+# Telegram webhook endpoint
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(request: Request):
+    """Receive Telegram updates via webhook."""
+    from aiogram.types import Update
+
+    # Validate secret if configured
+    if settings.TELEGRAM_WEBHOOK_SECRET:
+        secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if secret != settings.TELEGRAM_WEBHOOK_SECRET:
+            return JSONResponse(status_code=403, content={"detail": "Forbidden"})
+
+    body = await request.json()
+    update = Update.model_validate(body, context={"bot": bot})
+    await dp.feed_update(bot=bot, update=update)
+    return JSONResponse(content={"ok": True})
 
 
 # Basic API routes

@@ -11,7 +11,7 @@ class ApiClient {
   private client: AxiosInstance;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private readonly REQUEST_DEDUP_TTL = 5000; // 5 seconds
-  private token: string | null = null;
+  private token: string | null = 'local-dev-token';
 
   constructor() {
     this.client = axios.create({

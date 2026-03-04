@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/Toast';
 import type { Category } from '@/types';
 
 const categoryIcons = [
+  // Gastos
   { emoji: '🍔', name: 'Comida' },
   { emoji: '🚗', name: 'Transporte' },
   { emoji: '🏠', name: 'Vivienda' },
@@ -16,12 +17,35 @@ const categoryIcons = [
   { emoji: '👕', name: 'Ropa' },
   { emoji: '🎁', name: 'Regalos' },
   { emoji: '🛒', name: 'Compras' },
-  { emoji: '💰', name: 'Salario' },
-  { emoji: '💻', name: 'Trabajo' },
-  { emoji: '📈', name: 'Inversiones' },
   { emoji: '✈️', name: 'Viajes' },
   { emoji: '🐾', name: 'Mascotas' },
   { emoji: '💪', name: 'Gimnasio' },
+  { emoji: '⛽', name: 'Combustible' },
+  { emoji: '💊', name: 'Farmacia' },
+  { emoji: '☕', name: 'Café' },
+  { emoji: '📱', name: 'Suscripciones' },
+  { emoji: '🔧', name: 'Mantenimiento' },
+  { emoji: '🛡️', name: 'Seguros' },
+  { emoji: '🧾', name: 'Impuestos' },
+  { emoji: '🍕', name: 'Delivery' },
+  { emoji: '🍽️', name: 'Restaurantes' },
+  { emoji: '🎮', name: 'Videojuegos' },
+  { emoji: '🎵', name: 'Música' },
+  { emoji: '⚽', name: 'Deportes' },
+  { emoji: '📺', name: 'Streaming' },
+  { emoji: '🚕', name: 'Taxi' },
+  { emoji: '🏋️', name: 'Fitness' },
+  // Ingresos
+  { emoji: '💰', name: 'Salario' },
+  { emoji: '💻', name: 'Trabajo' },
+  { emoji: '📈', name: 'Inversiones' },
+  { emoji: '💵', name: 'Efectivo' },
+  { emoji: '🏦', name: 'Banco' },
+  { emoji: '🤝', name: 'Freelance' },
+  { emoji: '📊', name: 'Dividendos' },
+  { emoji: '🏆', name: 'Bonos' },
+  { emoji: '🏘️', name: 'Alquileres' },
+  { emoji: '💳', name: 'Reembolso' },
 ];
 
 export default function Settings() {
@@ -29,6 +53,7 @@ export default function Settings() {
   const { showToast } = useToast();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [newCategory, setNewCategory] = useState<{ name: string; icon: string; category_type: 'EXPENSE' | 'INCOME' }>({ name: '', icon: '📁', category_type: 'EXPENSE' });
 
   const { data: categories, isLoading } = useQuery({
@@ -66,9 +91,11 @@ export default function Settings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       showToast('Categoría eliminada', 'success');
+      setDeletingCategory(null);
     },
     onError: (error: any) => {
       showToast(error?.response?.data?.detail || 'Error al eliminar categoría', 'error');
+      setDeletingCategory(null);
     },
   });
 
@@ -157,11 +184,7 @@ export default function Settings() {
                         Editar
                       </button>
                       <button
-                        onClick={() => {
-                          if (window.confirm(`¿Estás seguro de eliminar la categoría "${category.name}"?`)) {
-                            deleteCategoryMutation.mutate(category.id);
-                          }
-                        }}
+                        onClick={() => setDeletingCategory(category)}
                         className="text-red-400 hover:text-red-300 text-sm"
                         disabled={deleteCategoryMutation.isPending}
                       >
@@ -204,11 +227,7 @@ export default function Settings() {
                         Editar
                       </button>
                       <button
-                        onClick={() => {
-                          if (window.confirm(`¿Estás seguro de eliminar la categoría "${category.name}"?`)) {
-                            deleteCategoryMutation.mutate(category.id);
-                          }
-                        }}
+                        onClick={() => setDeletingCategory(category)}
                         className="text-red-400 hover:text-red-300 text-sm"
                         disabled={deleteCategoryMutation.isPending}
                       >
@@ -231,8 +250,8 @@ export default function Settings() {
         <div className="space-y-2 text-white/70">
           <p><span className="text-white">URL:</span> {window.location.origin}</p>
           <p><span className="text-white">API:</span> {window.location.origin}/api</p>
-          <p><span className="text-white">Versión:</span> 1.0.0</p>
-          <p className="text-xs text-white/40 mt-2">Vercel + Neon PostgreSQL</p>
+          <p><span className="text-white">Versión:</span> 1.0.0 (Local Dev)</p>
+          <p className="text-xs text-white/40 mt-2">PostgreSQL Local + FastAPI</p>
         </div>
       </Card>
 
@@ -287,6 +306,41 @@ export default function Settings() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingCategory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="glass-card p-6 w-full max-w-sm">
+            <div className="text-center">
+              <div className="text-4xl mb-3">{deletingCategory.icon}</div>
+              <h2 className="text-xl font-semibold text-white mb-2">
+                Eliminar Categoría
+              </h2>
+              <p className="text-white/70 mb-6">
+                ¿Estás seguro de eliminar <span className="text-white font-medium">"{deletingCategory.name}"</span>? Las transacciones asociadas quedarán sin categoría.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeletingCategory(null)}
+                  className="glass-button flex-1"
+                  disabled={deleteCategoryMutation.isPending}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteCategoryMutation.mutate(deletingCategory.id)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 transition-all duration-200 font-medium"
+                  disabled={deleteCategoryMutation.isPending}
+                >
+                  {deleteCategoryMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

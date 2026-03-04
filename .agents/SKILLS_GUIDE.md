@@ -49,6 +49,36 @@ This document defines when and why each installed skill should be used. Before s
 - **When to use**: Creating telegram mini apps, TWA, telegram web apps, TON app integration, or building viral mini apps.
 - **Key Outcome**: A high-performance, mobile-first Telegram Mini App integrated with the Telegram Web App API and TON blockchain.
 
+### 10. `accessibility`
+**Purpose**: Audit and improve web accessibility following WCAG 2.1 guidelines.
+- **When to use**: Improving accessibility, running a11y audits, ensuring WCAG compliance, or adding screen reader support.
+- **Key Outcome**: An accessible web interface usable by everyone, meeting WCAG AA standards.
+
+### 11. `best-practices`
+**Purpose**: Apply modern web development best practices for security, compatibility, and code quality.
+- **When to use**: Applying best practices, running security audits, modernizing code, or checking vulnerabilities.
+- **Key Outcome**: Secure, robust, and modern codebase adhering to current web standards.
+
+### 12. `core-web-vitals`
+**Purpose**: Optimize Core Web Vitals (LCP, INP, CLS) for better page experience and search ranking.
+- **When to use**: Improving Core Web Vitals, fixing LCP, reducing CLS, or optimizing INP.
+- **Key Outcome**: Faster, stable page experience that passes Google's Core Web Vitals assessment.
+
+### 13. `performance`
+**Purpose**: Optimize web performance for faster loading and better user experience.
+- **When to use**: Speeding up a site, reducing load time, or running a performance audit.
+- **Key Outcome**: Highly performant web applications with fast loading times and smooth interactions.
+
+### 14. `seo`
+**Purpose**: Optimize for search engine visibility and ranking.
+- **When to use**: Improving SEO, fixing meta tags, adding structured data, or optimizing sitemaps.
+- **Key Outcome**: Search engine-friendly pages with proper meta tags, semantic structure, and structured data.
+
+### 15. `web-quality-audit`
+**Purpose**: Comprehensive web quality audit covering performance, accessibility, SEO, and best practices.
+- **When to use**: Auditing a site, reviewing web quality, running a lighthouse audit, or checking page quality.
+- **Key Outcome**: A detailed audit report with actionable recommendations prioritized by severity.
+
 ## 📋 Decision Protocol for the Agent
 
 1. **Review User Task**: What is the core objective? (Design, Debug, Build, Refactor).

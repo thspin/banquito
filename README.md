@@ -1,18 +1,11 @@
 # Banquito 💰
 
-Sistema de gestión financiera personal - FastAPI + React + PostgreSQL
-
-## 🚀 Stack de Producción
-
-- **Frontend & Backend**: [Vercel](https://vercel.com) (Serverless)
-- **Base de Datos**: [Neon](https://neon.tech) (Serverless PostgreSQL)
+Sistema de gestión financiera personal - FastAPI + React + PostgreSQL.
 
 ## 📁 Estructura del Proyecto
 
 ```
 banquito/
-├── api/
-│   └── index.py              # Entry point para Vercel (serverless)
 ├── backend/
 │   ├── app/
 │   │   ├── main.py          # FastAPI app
@@ -24,110 +17,67 @@ banquito/
 ├── frontend/
 │   ├── src/                 # React + TypeScript
 │   └── package.json
-├── vercel.json              # Configuración de Vercel
-├── deploy.sh                # Script de deploy
-└── DEPLOY.md               # Guía de deploy completa
+└── README.md
 ```
 
 ## ⚡ Quick Start (Local)
 
-### Backend
+### 1. Requisitos
+- Python 3.10+
+- PostgreSQL
+- Node.js & npm
 
+### 2. Backend
+
+1. Entrar al directorio y crear entorno virtual:
 ```bash
 cd backend
 python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# macOS/Linux
-source venv/bin/activate
-
-pip install -r requirements.txt
-
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tu DATABASE_URL local
-
-# Crear base de datos PostgreSQL local
-createdb banquito
-
-# Migraciones
-alembic upgrade head
-
-# Iniciar servidor
-uvicorn app.main:app --reload
 ```
 
-API: http://localhost:8000/docs
+2. Activar entorno virtual (Windows):
+```bash
+venv\Scripts\activate
+```
 
-### Frontend
+3. Instalar dependencias:
+```bash
+pip install -r requirements.txt
+```
 
+4. Configurar variables de entorno:
+   - Crear un archivo `.env` basado en `.env.example`.
+   - Asegurarse de que `DATABASE_URL` apunte a tu PostgreSQL local.
+
+5. Ejecutar migraciones:
+```bash
+alembic upgrade head
+```
+
+6. Iniciar servidor:
+```bash
+uvicorn app.main:app --reload
+```
+API: http://localhost:8000/api/docs
+
+### 3. Frontend
+
+1. Entrar al directorio e instalar dependencias:
 ```bash
 cd frontend
 npm install
+```
 
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con VITE_API_URL=http://localhost:8000
-
+2. Iniciar el servidor de desarrollo:
+```bash
 npm run dev
 ```
-
 Frontend: http://localhost:5173
-
-## 🚀 Deploy a Producción
-
-### Opción 1: Usando el Script (Recomendado)
-
-```bash
-# Login a Vercel (primera vez)
-npx vercel login
-
-# Ejecutar script de deploy
-./deploy.sh
-```
-
-### Opción 2: Manual
-
-#### 1. Crear Base de Datos en Neon
-
-1. Ir a [https://neon.tech](https://neon.tech)
-2. Crear proyecto nuevo
-3. Copiar el connection string
-
-#### 2. Configurar Variables de Entorno
-
-```bash
-npx vercel env add DATABASE_URL
-# Pegar: postgres://username:password@ep-xxx.us-east-1.aws.neon.tech/banquito?sslmode=require
-
-npx vercel env add APP_ENV production
-npx vercel env add DEBUG false
-npx vercel env add FRONTEND_URL https://tu-app.vercel.app
-```
-
-#### 3. Ejecutar Migraciones
-
-```bash
-cd backend
-export DATABASE_URL="postgres://username:password@ep-xxx.us-east-1.aws.neon.tech/banquito?sslmode=require"
-alembic upgrade head
-```
-
-#### 4. Deploy
-
-```bash
-npx vercel --prod
-```
 
 ## 📚 Documentación
 
-- [DEPLOY.md](DEPLOY.md) - Guía completa de deploy
-- [OPTIMIZATIONS.md](OPTIMIZATIONS.md) - Optimizaciones implementadas
 - [docs/00-SETUP.md](docs/00-SETUP.md) - Setup detallado local
 - [docs/01-MODELS.md](docs/01-MODELS.md) - Modelos de base de datos
-- [docs/DEPLOY_VERCEL_NEON.md](docs/DEPLOY_VERCEL_NEON.md) - Guía alternativa de deploy
 
 ## 🛠️ Características
 
@@ -139,6 +89,35 @@ npx vercel --prod
 - ✅ Múltiples monedas (ARS, USD, USDT, USDC, BTC)
 - ✅ Dashboard con gráficos
 - ✅ Categorías personalizables
+- ✅ Bot de Telegram para registro rápido de gastos/ingresos
+
+## 🤖 Bot de Telegram
+
+Registrá gastos e ingresos desde Telegram sin abrir la app.
+
+### Setup
+
+1. Crear un bot con [@BotFather](https://t.me/BotFather) y obtener el token.
+2. Agregar al `.env`:
+```env
+TELEGRAM_BOT_TOKEN=tu_token_aqui
+```
+
+3. Para webhooks (opcional, requiere URL pública):
+```env
+TELEGRAM_WEBHOOK_URL=https://tu-dominio.com/api/telegram/webhook
+TELEGRAM_WEBHOOK_SECRET=un_secreto_random
+```
+
+### Uso
+
+| Comando | Descripción |
+|---------|-------------|
+| `1500 Almuerzo` | Registrar gasto/ingreso rápido |
+| `/resumen` | Ver saldos de cuentas |
+| `/ultimos` | Ver últimas 5 transacciones |
+| `/cancelar` | Cancelar operación en curso |
+| `/ayuda` | Ver ayuda |
 
 ## 🔧 Tecnologías
 

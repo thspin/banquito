@@ -132,12 +132,12 @@ async def get_monthly_bills(
     user: User = Depends(get_current_user)
 ):
     """
-    Get or create bills for a specific month.
+    Get bills for a specific month.
     
-    Automatically creates bills for all active services if they don't exist.
+    Returns only manually created bills — no auto-generation.
     """
     service = ServiceBillService(db)
-    bills = await service.get_or_create_monthly_bills(user.id, year, month)
+    bills = await service.get_bills(user.id, year, month)
     return bills
 
 

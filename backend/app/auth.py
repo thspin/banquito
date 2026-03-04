@@ -26,14 +26,19 @@ def get_jwks_client():
 
 async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Security(security)) -> str:
     """
-    Verifies the Clerk JWT and returns the user ID.
+    Returns the demo user ID for local development, bypassing verification.
     """
+    if settings.DEBUG or settings.APP_ENV == "development":
+        # In local dev, we always act as the demo user
+        return settings.CURRENT_USER_ID
+    
     token = credentials.credentials
     config = get_auth_config()
     
     try:
         # Decode headers to get the key ID
         unverified_headers = jwt.get_unverified_header(token)
+        # ... rest of the verification logic for production ...
         kid = unverified_headers.get("kid")
         
         # Method 1: Use PEM Public Key (Fastest if provided)

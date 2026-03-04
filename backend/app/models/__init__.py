@@ -62,6 +62,7 @@ class CardProvider(str, PyEnum):
     MASTERCARD = "MASTERCARD"
     AMEX = "AMEX"
     OTHER = "OTHER"
+    X = "X"
 
 
 class SummaryStatus(str, PyEnum):
@@ -144,6 +145,9 @@ class FinancialInstitution(Base):
     name = Column(String(255), nullable=False)
     institution_type = Column(String(20), nullable=False)  # InstitutionType
     share_summary = Column(Boolean, default=False)
+    description = Column(Text, nullable=True)
+    has_shared_credit_limit = Column(Boolean, default=False)
+    shared_credit_limit = Column(Numeric(15, 2), nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
@@ -176,11 +180,7 @@ class FinancialProduct(Base):
     # Credit card specific fields
     closing_day = Column(Integer, nullable=True)
     due_day = Column(Integer, nullable=True)
-    limit_amount = Column(Numeric(15, 2), nullable=True)  # Renamed from 'limit'
-    limit_single_payment = Column(Numeric(15, 2), nullable=True)
-    limit_installments = Column(Numeric(15, 2), nullable=True)
-    shared_limit = Column(Boolean, default=False)
-    unified_limit = Column(Boolean, default=False)
+    limit_amount = Column(Numeric(15, 2), nullable=True)  # Total limit
     last_four_digits = Column(String(4), nullable=True)
     expiration_date = Column(DateTime(timezone=True), nullable=True)
     provider = Column(String(20), nullable=True)  # CardProvider
@@ -218,6 +218,11 @@ class FinancialProduct(Base):
         if self.product_type != ProductType.CREDIT_CARD.value:
             return Decimal("0")
         
+        if self.institution and getattr(self.institution, 'has_shared_credit_limit', False):
+            limit = self.institution.shared_credit_limit or Decimal("0")
+            total_cc_balance = sum(p.balance for p in self.institution.products if p.product_type == ProductType.CREDIT_CARD.value)
+            return limit + total_cc_balance
+            
         limit = self.limit_amount or Decimal("0")
         return limit + self.balance  # balance is negative for credit cards
 
@@ -244,7 +249,7 @@ class Transaction(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     from_product_id = Column(UUID(as_uuid=True), ForeignKey("financial_products.id"), nullable=True)
     to_product_id = Column(UUID(as_uuid=True), ForeignKey("financial_products.id"), nullable=True)
-    service_bill_id = Column(UUID(as_uuid=True), ForeignKey("service_bills.id"), nullable=True, unique=True)
+    service_bill_id = Column(UUID(as_uuid=True), ForeignKey("service_bills.id", ondelete="SET NULL"), nullable=True, unique=True)
     
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -371,6 +376,7 @@ class Service(Base):
     renewal_date = Column(DateTime(timezone=True), nullable=True)
     renewal_note = Column(Text, nullable=True)
     active = Column(Boolean, default=True)
+    auto_debit = Column(Boolean, default=False)
     
     # Relations
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
@@ -396,6 +402,7 @@ class ServiceBill(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     due_date = Column(DateTime(timezone=True), nullable=False)
     amount = Column(Numeric(15, 2), nullable=False)
+    currency = Column(String(10), default=Currency.ARS.value, nullable=False)
     status = Column(String(20), default=BillStatus.PENDING.value)  # BillStatus
     month = Column(Integer, nullable=False)
     year = Column(Integer, nullable=False)

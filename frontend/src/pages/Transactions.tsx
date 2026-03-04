@@ -14,13 +14,14 @@ export default function Transactions() {
   const { showToast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [filterType, setFilterType] = useState<string>('ALL');
+  const [formType, setFormType] = useState<TransactionType>('EXPENSE');
 
   // Edit/Delete state
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const { data: transactions } = useQuery({
+  const { data: transactions, isLoading: txLoading, error: txError } = useQuery({
     queryKey: ['transactions'],
     queryFn: () => transactionsApi.getTransactions(),
   });
@@ -46,6 +47,19 @@ export default function Transactions() {
     },
     onError: (error: any) => {
       showToast(error?.response?.data?.detail || 'Error al crear transacción', 'error');
+    },
+  });
+
+  const transferMutation = useMutation({
+    mutationFn: transactionsApi.createTransfer,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      showToast('Transferencia registrada', 'success');
+      setShowForm(false);
+    },
+    onError: (error: any) => {
+      showToast(error?.response?.data?.detail || 'Error al crear transferencia', 'error');
     },
   });
 
@@ -79,16 +93,28 @@ export default function Transactions() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    createMutation.mutate({
-      amount: parseFloat(formData.get('amount') as string),
-      date: formData.get('date') as string,
-      description: formData.get('description') as string,
-      transaction_type: formData.get('transaction_type') as TransactionType,
-      from_product_id: formData.get('from_product_id') as string,
-      category_id: formData.get('category_id') as string || undefined,
-      installments: parseInt(formData.get('installments') as string) || 1,
-      plan_z: formData.get('plan_z') === 'on',
-    });
+    const txType = formData.get('transaction_type') as TransactionType;
+
+    if (txType === 'TRANSFER') {
+      transferMutation.mutate({
+        amount: parseFloat(formData.get('amount') as string),
+        date: formData.get('date') as string,
+        description: formData.get('description') as string,
+        from_product_id: formData.get('from_product_id') as string,
+        to_product_id: formData.get('to_product_id') as string,
+      });
+    } else {
+      createMutation.mutate({
+        amount: parseFloat(formData.get('amount') as string),
+        date: formData.get('date') as string,
+        description: formData.get('description') as string,
+        transaction_type: txType,
+        from_product_id: formData.get('from_product_id') as string,
+        category_id: formData.get('category_id') as string || undefined,
+        installments: parseInt(formData.get('installments') as string) || 1,
+        plan_z: formData.get('plan_z') === 'on',
+      });
+    }
   };
 
   const handleUpdate = (e: React.FormEvent<HTMLFormElement>) => {
@@ -164,6 +190,32 @@ export default function Transactions() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto" onClick={handleBackgroundClick}>
+      {/* Backend unreachable error banner */}
+      {txError && (
+        <div className="flex items-start gap-3 px-5 py-4 bg-red-500/10 border border-red-500/30 rounded-2xl">
+          <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <div>
+            <p className="text-red-400 font-semibold text-sm">No se pudo conectar con el servidor</p>
+            <p className="text-red-400/70 text-xs mt-0.5">
+              Asegurate de que el backend esté corriendo en{' '}
+              <a href="http://localhost:8000/api/health" target="_blank" rel="noopener noreferrer" className="underline hover:text-red-300">
+                http://localhost:8000
+              </a>
+              . Ejecutá <code className="font-mono bg-red-500/10 px-1 rounded">start_banquito.ps1</code> para levantarlo.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {txLoading && (
+        <div className="flex items-center justify-center py-12 gap-3">
+          <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-white/40 text-sm">Cargando transacciones...</p>
+        </div>
+      )}
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -239,8 +291,8 @@ export default function Transactions() {
                     <div key={tx.id}
                       className="group flex items-center gap-4 px-5 py-4 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] rounded-2xl transition-all duration-200">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 border ${typeConfig.color === 'red' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
-                          typeConfig.color === 'emerald' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                            'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                        typeConfig.color === 'emerald' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                          'bg-blue-500/10 border-blue-500/20 text-blue-400'
                         }`}>
                         {category?.icon || typeConfig.icon}
                       </div>
@@ -256,6 +308,9 @@ export default function Transactions() {
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-white/40 text-xs truncate">
                             {tx.from_product_id ? getProductName(tx.from_product_id) : '—'}
+                            {tx.transaction_type === 'TRANSFER' && tx.to_product_id && (
+                              <> <span>→</span> {getProductName(tx.to_product_id)}</>
+                            )}
                           </p>
                           {category && (
                             <><span className="text-white/20">·</span><span className="text-white/40 text-xs">{category.name}</span></>
@@ -263,8 +318,8 @@ export default function Transactions() {
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className={`text-lg font-bold ${isIncome ? 'text-emerald-400' : 'text-white'}`}>
-                          {isIncome ? '+' : '-'}${tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        <p className={`text-lg font-bold ${isIncome ? 'text-emerald-400' : tx.transaction_type === 'TRANSFER' ? 'text-blue-400' : 'text-white'}`}>
+                          {isIncome ? '+' : tx.transaction_type === 'TRANSFER' ? '' : '-'}${tx.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                         </p>
                       </div>
                       <ActionMenu id={`tx-${tx.id}`}>
@@ -308,55 +363,70 @@ export default function Transactions() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Tipo</label>
-                <select name="transaction_type" required className="glass-input w-full">
+                <label htmlFor="transaction_type" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Tipo</label>
+                <select id="transaction_type" name="transaction_type" required className="glass-input w-full" value={formType} onChange={(e) => setFormType(e.target.value as TransactionType)} title="Tipo de transacción">
                   <option value="EXPENSE">↓ Gasto</option>
                   <option value="INCOME">↑ Ingreso</option>
+                  <option value="TRANSFER">↔ Transferencia</option>
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Monto</label>
-                  <input name="amount" type="number" step="0.01" required className="glass-input w-full" placeholder="0.00" />
+                  <label htmlFor="amount" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Monto</label>
+                  <input id="amount" name="amount" type="number" step="0.01" required className="glass-input w-full" placeholder="0.00" title="Monto" />
                 </div>
                 <div>
-                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Fecha</label>
-                  <input name="date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="glass-input w-full" />
+                  <label htmlFor="date" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Fecha</label>
+                  <input id="date" name="date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="glass-input w-full" title="Fecha" />
                 </div>
               </div>
               <div>
-                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Descripción</label>
-                <input name="description" type="text" required className="glass-input w-full" placeholder="Ej: Compra supermercado" />
+                <label htmlFor="description" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Descripción</label>
+                <input id="description" name="description" type="text" required className="glass-input w-full" placeholder={formType === 'INCOME' ? 'Ej: Cobro de sueldo' : 'Ej: Compra supermercado'} title="Descripción" />
               </div>
               <div>
-                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Producto</label>
-                <select name="from_product_id" required className="glass-input w-full">
+                <label htmlFor="from_product_id" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">{formType === 'INCOME' ? 'Cuenta destino' : formType === 'TRANSFER' ? 'Cuenta origen' : 'Cuenta de débito'}</label>
+                <select id="from_product_id" name="from_product_id" required className="glass-input w-full" title="Cuenta">
                   <option value="">Seleccionar cuenta...</option>
-                  {products?.map((p: FinancialProduct) => (<option key={p.id} value={p.id}>{p.name} (${p.balance.toFixed(2)})</option>))}
+                  {products?.filter((p: FinancialProduct) => formType === 'TRANSFER' ? ['SAVINGS_ACCOUNT', 'CHECKING_ACCOUNT', 'CREDIT_CARD'].includes(p.product_type) : true).map((p: FinancialProduct) => (<option key={p.id} value={p.id}>{p.name} (${p.balance.toFixed(2)})</option>))}
                 </select>
               </div>
-              <div>
-                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Categoría</label>
-                <select name="category_id" className="glass-input w-full">
-                  <option value="">Sin categoría</option>
-                  {categories?.map((c: Category) => (<option key={c.id} value={c.id}>{c.icon} {c.name}</option>))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              {formType === 'TRANSFER' && (
                 <div>
-                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Cuotas</label>
-                  <input name="installments" type="number" min="1" max="48" defaultValue="1" className="glass-input w-full" />
+                  <label htmlFor="to_product_id" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Cuenta destino</label>
+                  <select id="to_product_id" name="to_product_id" required className="glass-input w-full" title="Cuenta Destino">
+                    <option value="">Seleccionar cuenta destino...</option>
+                    {products?.filter((p: FinancialProduct) => ['SAVINGS_ACCOUNT', 'CHECKING_ACCOUNT'].includes(p.product_type)).map((p: FinancialProduct) => (<option key={p.id} value={p.id}>{p.name} (${p.balance.toFixed(2)})</option>))}
+                  </select>
                 </div>
-                <div className="flex items-end pb-1">
-                  <label className="flex items-center gap-2.5 cursor-pointer group">
-                    <input name="plan_z" type="checkbox" className="w-4 h-4 rounded border-white/20 bg-white/5 accent-primary-500" />
-                    <span className="text-white/60 text-xs font-medium group-hover:text-white/80 transition-colors">Plan Z (3 sin interés)</span>
-                  </label>
+              )}
+              {formType !== 'TRANSFER' && (
+                <div>
+                  <label htmlFor="category_id" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Categoría</label>
+                  <select id="category_id" name="category_id" className="glass-input w-full" title="Categoría">
+                    <option value="">Sin categoría</option>
+                    {categories?.filter((c: Category) => c.category_type === formType).map((c: Category) => (<option key={c.id} value={c.id}>{c.icon} {c.name}</option>))}
+                  </select>
                 </div>
-              </div>
+              )}
+              {formType === 'EXPENSE' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="installments" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Cuotas</label>
+                    <input id="installments" name="installments" type="number" min="1" max="48" defaultValue="1" className="glass-input w-full" title="Cuotas" />
+                  </div>
+                  <div className="flex items-end pb-1">
+                    <label htmlFor="plan_z" className="flex items-center gap-2.5 cursor-pointer group">
+                      <input id="plan_z" name="plan_z" type="checkbox" className="w-4 h-4 rounded border-white/20 bg-white/5 accent-primary-500" title="Plan Z" />
+                      <span className="text-white/60 text-xs font-medium group-hover:text-white/80 transition-colors">Plan Z (3 sin interés)</span>
+                    </label>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white transition-all">Cancelar</button>
-                <button type="submit" className="glass-button-primary flex-1" disabled={createMutation.isPending}>{createMutation.isPending ? 'Registrando...' : 'Registrar'}</button>
+                <button type="submit" className="glass-button-primary flex-1" disabled={createMutation.isPending || transferMutation.isPending}>{(createMutation.isPending || transferMutation.isPending) ? 'Registrando...' : 'Registrar'}</button>
               </div>
             </form>
           </div>
@@ -379,23 +449,23 @@ export default function Transactions() {
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Monto</label>
-                  <input name="amount" type="number" step="0.01" required className="glass-input w-full" defaultValue={editingTransaction.amount} />
+                  <label htmlFor="edit_amount" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Monto</label>
+                  <input id="edit_amount" name="amount" type="number" step="0.01" required className="glass-input w-full" defaultValue={editingTransaction.amount} title="Monto" />
                 </div>
                 <div>
-                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Fecha</label>
-                  <input name="date" type="date" required defaultValue={editingTransaction.date.split('T')[0]} className="glass-input w-full" />
+                  <label htmlFor="edit_date" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Fecha</label>
+                  <input id="edit_date" name="date" type="date" required defaultValue={editingTransaction.date.split('T')[0]} className="glass-input w-full" title="Fecha" />
                 </div>
               </div>
               <div>
-                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Descripción</label>
-                <input name="description" type="text" required className="glass-input w-full" defaultValue={editingTransaction.description} />
+                <label htmlFor="edit_description" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Descripción</label>
+                <input id="edit_description" name="description" type="text" required className="glass-input w-full" defaultValue={editingTransaction.description} title="Descripción" />
               </div>
               <div>
-                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Categoría</label>
-                <select name="category_id" className="glass-input w-full" defaultValue={editingTransaction.category_id || ''}>
+                <label htmlFor="edit_category_id" className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Categoría</label>
+                <select id="edit_category_id" name="category_id" className="glass-input w-full" defaultValue={editingTransaction.category_id || ''} title="Categoría">
                   <option value="">Sin categoría</option>
-                  {categories?.map((c: Category) => (<option key={c.id} value={c.id}>{c.icon} {c.name}</option>))}
+                  {categories?.filter((c: Category) => c.category_type === editingTransaction.transaction_type).map((c: Category) => (<option key={c.id} value={c.id}>{c.icon} {c.name}</option>))}
                 </select>
               </div>
               <div className="flex gap-3 pt-4">

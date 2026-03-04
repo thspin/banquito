@@ -1,11 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
-import { UserButton, useUser } from "@clerk/clerk-react";
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/accounts', label: 'Cuentas', icon: '🏦' },
   { path: '/transactions', label: 'Transacciones', icon: '💳' },
-  { path: '/services', label: 'Servicios', icon: '📅', isLocked: true },
+  { path: '/services', label: 'Servicios', icon: '📅' },
   { path: '/budgets', label: 'Presupuestos', icon: '📋', isLocked: true },
   { path: '/calendar', label: 'Calendario', icon: '📆', isLocked: true },
   { path: '/rentals', label: 'Alquileres', icon: '🏠', isLocked: true },
@@ -14,12 +13,11 @@ const navItems = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const { user } = useUser();
 
   return (
-    <div className="min-h-screen flex bg-[#0f172a]">
+    <div className="h-screen flex bg-[#0f172a] overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-72 flex-shrink-0 glass-card m-4 flex flex-col border-white/5 overflow-hidden">
+      <aside className="w-72 flex-shrink-0 glass-card m-4 flex flex-col border-white/5 overflow-hidden sticky top-4 self-start max-h-[calc(100vh-2rem)]">
         <div className="p-6 border-b border-white/5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary-600/20 flex items-center justify-center border border-primary-500/20">
@@ -82,15 +80,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           <div className="bg-white/[0.03] border border-white/5 p-3 rounded-2xl flex items-center gap-3 group hover:bg-white/[0.05] transition-colors duration-200 cursor-pointer">
             <div className="relative">
-              <UserButton afterSignOutUrl="/" appearance={{ elements: { userButtonAvatarBox: "w-9 h-9 border border-white/10" } }} />
+              <div className="w-9 h-9 rounded-full bg-primary-600 flex items-center justify-center text-white text-xs font-bold border border-white/10">
+                DU
+              </div>
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-[#1e293b] rounded-full" />
             </div>
             <div className="flex-1 min-w-0 pr-2">
               <p className="text-sm font-semibold text-white truncate leading-tight">
-                {user?.fullName || user?.firstName || 'Usuario'}
+                Demo User
               </p>
               <p className="text-[10px] text-white/40 truncate mt-0.5">
-                {user?.primaryEmailAddress?.emailAddress}
+                demo@banquito.com
               </p>
             </div>
             <svg className="w-4 h-4 text-white/20 group-hover:text-white/40 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">

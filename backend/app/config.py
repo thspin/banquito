@@ -51,11 +51,16 @@ class Settings(BaseSettings):
     CURRENT_USER_ID: str = "550e8400-e29b-41d4-a716-446655440000"
     CURRENT_USER_EMAIL: str = "demo@banquito.app"
     
-    # Clerk Authentication (Defaults for production fallback)
-    CLERK_PEM_PUBLIC_KEY: str = ""
-    CLERK_ISSUER: str = "https://brief-bee-17.clerk.accounts.dev"
-    CLERK_JWKS_URL: str = "https://brief-bee-17.clerk.accounts.dev/.well-known/jwks.json"
+    # Clerk Authentication
+    CLERK_ISSUER: str = ""
+    CLERK_JWKS_URL: str = ""
     CLERK_AUDIENCE: str = ""
+    CLERK_PEM_PUBLIC_KEY: str = ""  # Optional: faster than JWKS fetch
+    
+    # Telegram Bot
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_WEBHOOK_URL: str = ""  # Required if using webhooks via Cloudflare Tunnel
+    TELEGRAM_WEBHOOK_SECRET: str = ""  # Secret to validate webhook requests
     
     class Config:
         env_file = ".env"

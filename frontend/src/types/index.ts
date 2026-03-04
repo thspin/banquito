@@ -4,7 +4,7 @@ export type InstitutionType = 'BANK' | 'WALLET';
 export type ProductType = 'CASH' | 'SAVINGS_ACCOUNT' | 'CHECKING_ACCOUNT' | 'DEBIT_CARD' | 'CREDIT_CARD' | 'LOAN';
 export type Currency = 'ARS' | 'USD' | 'USDT' | 'USDC' | 'BTC';
 export type CategoryType = 'INCOME' | 'EXPENSE';
-export type CardProvider = 'VISA' | 'MASTERCARD' | 'AMEX' | 'OTHER';
+export type CardProvider = 'VISA' | 'MASTERCARD' | 'AMEX' | 'OTHER' | 'X';
 export type SummaryStatus = 'DRAFT' | 'CLOSED' | 'PAID';
 export type AdjustmentType = 'COMMISSION' | 'TAX' | 'INTEREST' | 'INSURANCE' | 'CREDIT' | 'OTHER';
 export type BillStatus = 'PENDING' | 'PAID' | 'SKIPPED';
@@ -48,17 +48,26 @@ export interface FinancialInstitution extends Timestamped {
   institution_type: InstitutionType;
   share_summary: boolean;
   user_id: string;
+  description?: string;
+  has_shared_credit_limit: boolean;
+  shared_credit_limit?: number;
 }
 
 export interface FinancialInstitutionCreate {
   name: string;
   institution_type: InstitutionType;
   share_summary?: boolean;
+  description?: string;
+  has_shared_credit_limit?: boolean;
+  shared_credit_limit?: number;
 }
 
 export interface FinancialInstitutionUpdate {
   name?: string;
   share_summary?: boolean;
+  description?: string;
+  has_shared_credit_limit?: boolean;
+  shared_credit_limit?: number;
 }
 
 // Product
@@ -70,10 +79,6 @@ export interface FinancialProduct extends Timestamped {
   closing_day?: number;
   due_day?: number;
   limit_amount?: number;
-  limit_single_payment?: number;
-  limit_installments?: number;
-  shared_limit: boolean;
-  unified_limit: boolean;
   last_four_digits?: string;
   expiration_date?: string;
   provider?: CardProvider;
@@ -91,10 +96,6 @@ export interface FinancialProductCreate {
   closing_day?: number;
   due_day?: number;
   limit_amount?: number;
-  limit_single_payment?: number;
-  limit_installments?: number;
-  shared_limit?: boolean;
-  unified_limit?: boolean;
   last_four_digits?: string;
   expiration_date?: string;
   provider?: CardProvider;
@@ -104,13 +105,10 @@ export interface FinancialProductCreate {
 
 export interface FinancialProductUpdate {
   name?: string;
+  balance?: number;
   closing_day?: number;
   due_day?: number;
   limit_amount?: number;
-  limit_single_payment?: number;
-  limit_installments?: number;
-  shared_limit?: boolean;
-  unified_limit?: boolean;
   last_four_digits?: string;
   expiration_date?: string;
   provider?: CardProvider;
@@ -238,6 +236,7 @@ export interface Service extends Timestamped {
   renewal_date?: string;
   renewal_note?: string;
   active: boolean;
+  auto_debit: boolean;
   category_id: string;
   user_id: string;
   category?: Category;
@@ -250,7 +249,8 @@ export interface ServiceCreate {
   renewal_date?: string;
   renewal_note?: string;
   active?: boolean;
-  category_id: string;
+  auto_debit?: boolean;
+  category_id?: string;
 }
 
 export interface ServiceUpdate {
@@ -260,6 +260,7 @@ export interface ServiceUpdate {
   renewal_date?: string;
   renewal_note?: string;
   active?: boolean;
+  auto_debit?: boolean;
   category_id?: string;
 }
 
@@ -267,6 +268,7 @@ export interface ServiceUpdate {
 export interface ServiceBill extends Timestamped {
   due_date: string;
   amount: number;
+  currency: string;
   status: BillStatus;
   month: number;
   year: number;
@@ -279,6 +281,7 @@ export interface ServiceBill extends Timestamped {
 export interface ServiceBillCreate {
   due_date: string;
   amount: number;
+  currency?: string;
   status?: BillStatus;
   month: number;
   year: number;
@@ -287,6 +290,7 @@ export interface ServiceBillCreate {
 
 export interface ServiceBillUpdate {
   amount?: number;
+  currency?: string;
   due_date?: string;
   status?: BillStatus;
 }

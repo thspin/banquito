@@ -1,21 +1,67 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountsApi } from '@/api/accounts';
+import { categoriesApi } from '@/api/categories';
+import { transactionsApi } from '@/api/transactions';
 import { Card } from '@/components/ui/Card';
-import { useUser } from "@clerk/clerk-react";
+import { useToast } from '@/components/ui/Toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
+import type { FinancialProduct, Category, TransactionType } from '@/types';
 
 export default function Dashboard() {
-  const { user } = useUser();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+
   const { data: products } = useQuery({
     queryKey: ['products'],
     queryFn: () => accountsApi.getProducts(),
   });
 
+  const { data: institutions } = useQuery({
+    queryKey: ['institutions'],
+    queryFn: () => accountsApi.getInstitutions(),
+  });
+
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => categoriesApi.getCategories(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: transactionsApi.createTransaction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      showToast('Transacción registrada', 'success');
+      setShowTransactionModal(false);
+    },
+    onError: (error: any) => {
+      showToast(error?.response?.data?.detail || 'Error al crear transacción', 'error');
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createMutation.mutate({
+      amount: parseFloat(formData.get('amount') as string),
+      date: formData.get('date') as string,
+      description: formData.get('description') as string,
+      transaction_type: formData.get('transaction_type') as TransactionType,
+      from_product_id: formData.get('from_product_id') as string,
+      category_id: formData.get('category_id') as string || undefined,
+      installments: parseInt(formData.get('installments') as string) || 1,
+      plan_z: formData.get('plan_z') === 'on',
+    });
+  };
+
   const totalBalance = products?.reduce((sum, p) => sum + p.balance, 0) || 0;
   const creditCards = products?.filter(p => p.product_type === 'CREDIT_CARD') || [];
   const totalDebt = creditCards.reduce((sum, card) => sum + Math.abs(card.balance || 0), 0);
+  const productCount = products?.length || 0;
 
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: es });
 
@@ -26,7 +72,7 @@ export default function Dashboard() {
         <div>
           <p className="text-primary-400 font-medium mb-1 capitalize text-sm">{today}</p>
           <h1 className="text-4xl font-bold text-white tracking-tight">
-            ¡Hola, {user?.firstName || 'Usuario'}! 👋
+            ¡Hola, Demo User! 👋
           </h1>
         </div>
       </header>
@@ -52,7 +98,7 @@ export default function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
-          <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">Deuda Tarjetas</p>
+          <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">Deudas y créditos</p>
           <p className={`text-3xl font-bold ${totalDebt > 0 ? 'text-red-400' : 'text-white'}`}>
             ${totalDebt.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
           </p>
@@ -67,20 +113,9 @@ export default function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
             </svg>
           </div>
-          <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">Cuentas Activas</p>
-          <p className="text-3xl font-bold text-white">{products?.filter(p => p.product_type !== 'CREDIT_CARD').length || 0}</p>
-          <p className="text-[10px] text-white/30 mt-2 font-medium">Bancos y billeteras virtuales</p>
-        </Card>
-
-        <Card className="relative overflow-hidden group hover:border-primary-500/30 transition-all duration-300">
-          <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-          <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">Tarjetas</p>
-          <p className="text-3xl font-bold text-white">{creditCards.length}</p>
-          <p className="text-[10px] text-white/30 mt-2 font-medium">Crédito y prepagas activas</p>
+          <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">Productos Activos</p>
+          <p className="text-3xl font-bold text-white">{productCount}</p>
+          <p className="text-[10px] text-white/30 mt-2 font-medium">En {institutions?.length || 0} {(institutions?.length || 0) === 1 ? 'institución' : 'instituciones'}</p>
         </Card>
       </div>
 
@@ -123,7 +158,10 @@ export default function Dashboard() {
         <div className="space-y-6">
           <Card title="Acciones Rápidas">
             <div className="grid grid-cols-1 gap-3">
-              <button className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition-all text-left group">
+              <button
+                onClick={() => setShowTransactionModal(true)}
+                className="w-full flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition-all text-left group"
+              >
                 <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20 group-hover:scale-110 transition-transform">
                   <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -134,38 +172,76 @@ export default function Dashboard() {
                   <p className="text-[10px] text-white/40">Ingreso o gasto manual</p>
                 </div>
               </button>
-
-              <Link to="/accounts" className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition-all text-left group">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
-                  <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Gestionar</p>
-                  <p className="text-[10px] text-white/40">Bancos y billeteras</p>
-                </div>
-              </Link>
             </div>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-primary-600/10 via-transparent to-transparent border-primary-500/10 relative overflow-hidden group">
-            <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-primary-500/10 blur-3xl rounded-full group-hover:bg-primary-500/20 transition-colors" />
-            <h4 className="font-bold text-white text-sm mb-2 flex items-center gap-2">
-              <div className="bg-primary-500/20 p-1.5 rounded-md">
-                <svg className="w-3.5 h-3.5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              Tip Financiero
-            </h4>
-            <p className="text-[11px] text-white/50 leading-relaxed font-medium">
-              Vincula tus tarjetas para prever deudas próximas y evitar intereses por pagos tardíos.
-            </p>
           </Card>
         </div>
       </div>
+      {/* Transaction Modal */}
+      {showTransactionModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setShowTransactionModal(false)}>
+          <div className="glass-card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              </div>
+              <div><h2 className="text-lg font-semibold text-white">Nueva Transacción</h2><p className="text-white/40 text-xs">Registrá un ingreso o gasto</p></div>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Tipo</label>
+                <select name="transaction_type" required className="glass-input w-full">
+                  <option value="EXPENSE">↓ Gasto</option>
+                  <option value="INCOME">↑ Ingreso</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Monto</label>
+                  <input name="amount" type="number" step="0.01" required className="glass-input w-full" placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Fecha</label>
+                  <input name="date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="glass-input w-full" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Descripción</label>
+                <input name="description" type="text" required className="glass-input w-full" placeholder="Ej: Compra supermercado" />
+              </div>
+              <div>
+                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Producto</label>
+                <select name="from_product_id" required className="glass-input w-full">
+                  <option value="">Seleccionar cuenta...</option>
+                  {products?.map((p: FinancialProduct) => (<option key={p.id} value={p.id}>{p.name} (${p.balance.toFixed(2)})</option>))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Categoría</label>
+                <select name="category_id" className="glass-input w-full">
+                  <option value="">Sin categoría</option>
+                  {categories?.map((c: Category) => (<option key={c.id} value={c.id}>{c.icon} {c.name}</option>))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Cuotas</label>
+                  <input name="installments" type="number" min="1" max="48" defaultValue="1" className="glass-input w-full" />
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-2.5 cursor-pointer group">
+                    <input name="plan_z" type="checkbox" className="w-4 h-4 rounded border-white/20 bg-white/5 accent-primary-500" />
+                    <span className="text-white/60 text-xs font-medium group-hover:text-white/80 transition-colors">Plan Z (3 sin interés)</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setShowTransactionModal(false)} className="flex-1 bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 rounded-xl px-4 py-2.5 text-sm font-medium text-white/70 hover:text-white transition-all">Cancelar</button>
+                <button type="submit" className="glass-button-primary flex-1" disabled={createMutation.isPending}>{createMutation.isPending ? 'Registrando...' : 'Registrar'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

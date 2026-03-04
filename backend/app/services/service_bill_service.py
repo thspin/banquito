@@ -6,6 +6,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from sqlalchemy import select, and_, extract
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -16,6 +17,7 @@ from app.models import (
     ProductType,
     TransactionType,
     BillStatus,
+    Category,
 )
 from app.schemas import (
     ServiceCreate,
@@ -40,7 +42,11 @@ class ServiceBillService:
         active_only: bool = True
     ) -> List[Service]:
         """Get all services for a user."""
-        query = select(Service).where(Service.user_id == user_id)
+        query = (
+            select(Service)
+            .options(selectinload(Service.category))
+            .where(Service.user_id == user_id)
+        )
         
         if active_only:
             query = query.where(Service.active == True)
@@ -53,6 +59,7 @@ class ServiceBillService:
         """Get a specific service."""
         result = await self.db.execute(
             select(Service)
+            .options(selectinload(Service.category))
             .where(
                 and_(
                     Service.id == service_id,
@@ -63,7 +70,12 @@ class ServiceBillService:
         return result.scalar_one_or_none()
     
     async def create_service(self, data: ServiceCreate, user_id: UUID) -> Service:
-        """Create a new service."""
+        """Create a new service. Auto-assigns 'Servicios' category if none provided."""
+        category_id = data.category_id
+        if not category_id:
+            # Auto-assign the 'Servicios' category
+            category_id = await self._get_or_create_servicios_category(user_id)
+        
         service = Service(
             name=data.name,
             default_amount=data.default_amount,
@@ -71,14 +83,41 @@ class ServiceBillService:
             renewal_date=data.renewal_date,
             renewal_note=data.renewal_note,
             active=data.active,
-            category_id=data.category_id,
+            category_id=category_id,
             user_id=user_id
         )
         
         self.db.add(service)
         await self.db.commit()
         await self.db.refresh(service)
-        return service
+        # Re-query with eager loading to get the category
+        return await self.get_service(service.id, user_id)
+    
+    async def _get_or_create_servicios_category(self, user_id: UUID) -> UUID:
+        """Find or create the 'Servicios' system category for the user."""
+        result = await self.db.execute(
+            select(Category).where(
+                and_(
+                    Category.name == "Servicios",
+                    Category.user_id == user_id
+                )
+            )
+        )
+        cat = result.scalar_one_or_none()
+        if cat:
+            return cat.id
+        
+        # Create it
+        cat = Category(
+            name="Servicios",
+            icon="💡",
+            category_type="EXPENSE",
+            is_system=True,
+            user_id=user_id
+        )
+        self.db.add(cat)
+        await self.db.flush()
+        return cat.id
     
     async def update_service(
         self,
@@ -103,12 +142,14 @@ class ServiceBillService:
             service.renewal_note = data.renewal_note
         if data.active is not None:
             service.active = data.active
+        if data.auto_debit is not None:
+            service.auto_debit = data.auto_debit
         if data.category_id is not None:
             service.category_id = data.category_id
         
         await self.db.commit()
-        await self.db.refresh(service)
-        return service
+        # Re-query with eager loading to get the category
+        return await self.get_service(service_id, user_id)
     
     async def delete_service(self, service_id: UUID, user_id: UUID) -> bool:
         """Delete a service."""
@@ -130,7 +171,13 @@ class ServiceBillService:
         status: Optional[str] = None
     ) -> List[ServiceBill]:
         """Get bills with optional filters."""
-        query = select(ServiceBill).where(ServiceBill.user_id == user_id)
+        query = (
+            select(ServiceBill)
+            .options(
+                selectinload(ServiceBill.service).selectinload(Service.category)
+            )
+            .where(ServiceBill.user_id == user_id)
+        )
         
         if year:
             query = query.where(ServiceBill.year == year)
@@ -147,6 +194,9 @@ class ServiceBillService:
         """Get a specific bill."""
         result = await self.db.execute(
             select(ServiceBill)
+            .options(
+                selectinload(ServiceBill.service).selectinload(Service.category)
+            )
             .where(
                 and_(
                     ServiceBill.id == bill_id,
@@ -168,6 +218,9 @@ class ServiceBillService:
         # First, get existing bills for this month
         result = await self.db.execute(
             select(ServiceBill)
+            .options(
+                selectinload(ServiceBill.service).selectinload(Service.category)
+            )
             .where(
                 and_(
                     ServiceBill.user_id == user_id,
@@ -252,6 +305,7 @@ class ServiceBillService:
         bill = ServiceBill(
             due_date=data.due_date,
             amount=data.amount,
+            currency=data.currency,
             status=data.status,
             month=data.month,
             year=data.year,
@@ -262,7 +316,7 @@ class ServiceBillService:
         self.db.add(bill)
         await self.db.commit()
         await self.db.refresh(bill)
-        return bill
+        return await self.get_bill(bill.id, user_id)
     
     async def update_bill(
         self,
@@ -277,14 +331,15 @@ class ServiceBillService:
         
         if data.amount is not None:
             bill.amount = data.amount
+        if data.currency is not None:
+            bill.currency = data.currency
         if data.due_date is not None:
             bill.due_date = data.due_date
         if data.status is not None:
             bill.status = data.status
         
         await self.db.commit()
-        await self.db.refresh(bill)
-        return bill
+        return await self.get_bill(bill_id, user_id)
     
     async def pay_bill(
         self,
@@ -354,10 +409,33 @@ class ServiceBillService:
         return transaction
     
     async def delete_bill(self, bill_id: UUID, user_id: UUID) -> bool:
-        """Delete a bill."""
+        """Delete a bill. Handles unlinking from associated transaction if paid."""
         bill = await self.get_bill(bill_id, user_id)
         if not bill:
             return False
+        
+        # If the bill has an associated transaction, unlink it first
+        if bill.transaction_id:
+            # Find the transaction and clear its service_bill_id
+            result = await self.db.execute(
+                select(Transaction).where(Transaction.id == bill.transaction_id)
+            )
+            transaction = result.scalar_one_or_none()
+            if transaction:
+                transaction.service_bill_id = None
+            
+            # Clear the bill's reference to the transaction
+            bill.transaction_id = None
+            await self.db.flush()
+        
+        # Also check for any transaction that references this bill via service_bill_id
+        result = await self.db.execute(
+            select(Transaction).where(Transaction.service_bill_id == bill.id)
+        )
+        linked_tx = result.scalar_one_or_none()
+        if linked_tx:
+            linked_tx.service_bill_id = None
+            await self.db.flush()
         
         await self.db.delete(bill)
         await self.db.commit()
@@ -374,5 +452,4 @@ class ServiceBillService:
         
         bill.status = BillStatus.SKIPPED
         await self.db.commit()
-        await self.db.refresh(bill)
-        return bill
+        return await self.get_bill(bill_id, user_id)
