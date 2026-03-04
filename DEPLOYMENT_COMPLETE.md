@@ -20,7 +20,10 @@ Se ha completado un deployment profesional de Banquito en Vercel con todas las m
 
 ### ✅ Infraestructura
 - [x] `requirements.txt` en raíz (Vercel lo detecta)
-- [x] `vercel.json` configurado para Python 3.11
+- [x] `vercel.json` configurado correctamente sin runtime inválido
+- [x] `.python-version` especifica Python 3.12
+- [x] `build.sh` para instalación limpia de dependencias
+- [x] `/api/health.py` endpoint de diagnósticos
 - [x] Funciones serverless optimizadas (maxDuration: 60s)
 - [x] CORS configurado correctamente
 - [x] SSL/TLS en toda la comunicación
