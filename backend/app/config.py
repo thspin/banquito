@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "Banquito API"
     APP_ENV: str = "production"
-    DEBUG: bool = True
+    DEBUG: bool = False
     VERSION: str = "1.0.0"
     
     # Database
@@ -20,12 +20,12 @@ class Settings(BaseSettings):
         if not self.DATABASE_URL:
             error_msg = (
                 "CRITICAL: DATABASE_URL environment variable is not set!\n"
-                "Please configure it in Vercel Settings → Environment Variables\n"
+                "Please configure it in Vercel Settings -> Environment Variables\n"
                 "Example: postgresql://user:pass@host/db?sslmode=require"
             )
             print(error_msg, file=sys.stderr)
-            if self.APP_ENV == "production":
-                raise ValueError(error_msg)
+            # Always raise — the app cannot function without a database
+            raise ValueError(error_msg)
     
     @property
     def ASYNC_DATABASE_URL(self) -> str:

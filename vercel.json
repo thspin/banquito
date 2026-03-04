@@ -2,9 +2,9 @@
   "installCommand": "pip install -r requirements.txt && cd frontend && npm install",
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
-  "framework": "vite",
   "functions": {
     "api/*.py": {
+      "runtime": "@vercel/python",
       "maxDuration": 60
     }
   },
