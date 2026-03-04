@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+import sys
 
 
 class Settings(BaseSettings):
@@ -12,7 +13,19 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://neondb_owner:npg_q8hzxfpcvj2m@ep-twilight-sound-ai3i3gq1-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require"
+    DATABASE_URL: str = ""  # Required: set via environment variable
+    
+    def model_post_init(self, __context):
+        """Validate critical settings after model initialization."""
+        if not self.DATABASE_URL:
+            error_msg = (
+                "CRITICAL: DATABASE_URL environment variable is not set!\n"
+                "Please configure it in Vercel Settings → Environment Variables\n"
+                "Example: postgresql://user:pass@host/db?sslmode=require"
+            )
+            print(error_msg, file=sys.stderr)
+            if self.APP_ENV == "production":
+                raise ValueError(error_msg)
     
     @property
     def ASYNC_DATABASE_URL(self) -> str:

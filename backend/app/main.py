@@ -62,22 +62,23 @@ async def lifespan(app: FastAPI):
         # Start Telegram Bot
         if settings.TELEGRAM_BOT_TOKEN:
             if settings.TELEGRAM_WEBHOOK_URL:
-                # Webhook mode: register with Telegram
+                # Webhook mode: 24/7 on Vercel (event-driven)
                 await setup_webhook(
                     settings.TELEGRAM_WEBHOOK_URL,
                     settings.TELEGRAM_WEBHOOK_SECRET,
                 )
-                print(f"Telegram Bot: webhook mode → {settings.TELEGRAM_WEBHOOK_URL}")
+                print(f"✅ Telegram Bot: webhook mode (24/7 on Vercel)")
+                print(f"   Webhook URL: {settings.TELEGRAM_WEBHOOK_URL}")
             else:
-                # Polling mode: run in background task.
+                # Polling mode: continuous polling (for local development)
                 # We keep a reference in _background_tasks so Python's GC
                 # doesn't silently cancel the coroutine.
                 task = asyncio.create_task(start_bot())
                 _background_tasks.add(task)
                 task.add_done_callback(_background_tasks.discard)
-                print("Telegram Bot: polling mode activo (desarrollo local)")
+                print("✅ Telegram Bot: polling mode (development local)")
         else:
-            print("Telegram Bot: TELEGRAM_BOT_TOKEN no configurado — bot deshabilitado")
+            print("⚠️  Telegram Bot: TELEGRAM_BOT_TOKEN not configured — bot disabled")
     except Exception as e:
         print(f"Database initialization warning: {e}")
         # Continue even if DB init fails - tables might already exist
