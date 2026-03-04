@@ -48,6 +48,7 @@ class CardProvider(str):
     MASTERCARD = "MASTERCARD"
     AMEX = "AMEX"
     OTHER = "OTHER"
+    X = "X"
 
 
 class SummaryStatus(str):
@@ -154,6 +155,21 @@ class FinancialInstitutionBase(BaseSchema):
     name: str
     institution_type: str = InstitutionType.BANK
     share_summary: bool = False
+    description: Optional[str] = None
+    has_shared_credit_limit: bool = False
+    shared_credit_limit: Optional[Decimal] = None
+
+    @field_validator('has_shared_credit_limit', mode='before')
+    @classmethod
+    def coerce_has_shared_credit_limit(cls, v):
+        """Coerce NULL DB values to False (defensive: legacy rows may have NULL)."""
+        return bool(v) if v is not None else False
+
+    @field_validator('share_summary', mode='before')
+    @classmethod
+    def coerce_share_summary(cls, v):
+        """Coerce NULL DB values to False (defensive: legacy rows may have NULL)."""
+        return bool(v) if v is not None else False
 
 
 class FinancialInstitutionCreate(FinancialInstitutionBase):
@@ -168,6 +184,9 @@ class FinancialInstitutionCreate(FinancialInstitutionBase):
 class FinancialInstitutionUpdate(BaseSchema):
     name: Optional[str] = None
     share_summary: Optional[bool] = None
+    description: Optional[str] = None
+    has_shared_credit_limit: Optional[bool] = None
+    shared_credit_limit: Optional[Decimal] = None
 
 
 class FinancialInstitutionResponse(FinancialInstitutionBase, TimestampSchema):
@@ -187,10 +206,6 @@ class FinancialProductBase(BaseSchema):
     closing_day: Optional[int] = Field(None, ge=1, le=31)
     due_day: Optional[int] = Field(None, ge=1, le=31)
     limit_amount: Optional[Decimal] = None
-    limit_single_payment: Optional[Decimal] = None
-    limit_installments: Optional[Decimal] = None
-    shared_limit: bool = False
-    unified_limit: bool = False
     last_four_digits: Optional[str] = Field(None, max_length=4)
     expiration_date: Optional[datetime] = None
     provider: Optional[str] = None
@@ -228,7 +243,7 @@ class FinancialProductCreate(FinancialProductBase):
     @classmethod
     def validate_provider(cls, v):
         if v is not None:
-            valid_providers = [CardProvider.VISA, CardProvider.MASTERCARD, CardProvider.AMEX, CardProvider.OTHER]
+            valid_providers = [CardProvider.VISA, CardProvider.MASTERCARD, CardProvider.AMEX, CardProvider.OTHER, CardProvider.X]
             if v not in valid_providers:
                 raise ValueError(f'provider must be one of {valid_providers}')
         return v
@@ -236,13 +251,10 @@ class FinancialProductCreate(FinancialProductBase):
 
 class FinancialProductUpdate(BaseSchema):
     name: Optional[str] = None
+    balance: Optional[Decimal] = None
     closing_day: Optional[int] = Field(None, ge=1, le=31)
     due_day: Optional[int] = Field(None, ge=1, le=31)
     limit_amount: Optional[Decimal] = None
-    limit_single_payment: Optional[Decimal] = None
-    limit_installments: Optional[Decimal] = None
-    shared_limit: Optional[bool] = None
-    unified_limit: Optional[bool] = None
     last_four_digits: Optional[str] = Field(None, max_length=4)
     expiration_date: Optional[datetime] = None
     provider: Optional[str] = None
@@ -263,7 +275,7 @@ class FinancialProductDetailResponse(FinancialProductResponse):
 # ============== Transaction Schemas ==============
 
 class TransactionBase(BaseSchema):
-    amount: Decimal = Field(..., gt=0)
+    amount: Decimal = Field(..., ge=0)
     date: datetime
     description: str
     status: str = "COMPLETED"
@@ -282,7 +294,7 @@ class TransactionBase(BaseSchema):
 
 class TransactionCreate(BaseSchema):
     """Schema for creating a transaction."""
-    amount: Decimal = Field(..., gt=0)
+    amount: Decimal = Field(..., ge=0)
     date: datetime
     description: str
     transaction_type: str = TransactionType.EXPENSE
@@ -295,7 +307,7 @@ class TransactionCreate(BaseSchema):
 
 
 class TransactionUpdate(BaseSchema):
-    amount: Optional[Decimal] = Field(None, gt=0)
+    amount: Optional[Decimal] = Field(None, ge=0)
     date: Optional[datetime] = None
     description: Optional[str] = None
     category_id: Optional[UUID] = None
@@ -316,7 +328,7 @@ class TransactionDetailResponse(TransactionResponse):
 
 class TransferCreate(BaseSchema):
     """Schema for creating a transfer."""
-    amount: Decimal = Field(..., gt=0)
+    amount: Decimal = Field(..., ge=0)
     date: datetime
     description: str
     from_product_id: UUID
@@ -429,7 +441,8 @@ class ServiceBase(BaseSchema):
     renewal_date: Optional[datetime] = None
     renewal_note: Optional[str] = None
     active: bool = True
-    category_id: UUID
+    auto_debit: bool = False
+    category_id: Optional[UUID] = None
 
 
 class ServiceCreate(ServiceBase):
@@ -443,6 +456,7 @@ class ServiceUpdate(BaseSchema):
     renewal_date: Optional[datetime] = None
     renewal_note: Optional[str] = None
     active: Optional[bool] = None
+    auto_debit: Optional[bool] = None
     category_id: Optional[UUID] = None
 
 
@@ -457,6 +471,7 @@ class ServiceResponse(ServiceBase, TimestampSchema):
 class ServiceBillBase(BaseSchema):
     due_date: datetime
     amount: Decimal
+    currency: str = "ARS"
     status: str = BillStatus.PENDING
     month: int
     year: int
@@ -468,6 +483,7 @@ class ServiceBillCreate(ServiceBillBase):
 
 class ServiceBillUpdate(BaseSchema):
     amount: Optional[Decimal] = None
+    currency: Optional[str] = None
     due_date: Optional[datetime] = None
     status: Optional[str] = None
 
