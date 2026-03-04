@@ -5,7 +5,7 @@
   "framework": "vite",
   "functions": {
     "api/index.py": {
-      "runtime": "python3.11",
+      "runtime": "@vercel/python@4.x",
       "maxDuration": 60
     }
   },
