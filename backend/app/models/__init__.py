@@ -177,10 +177,6 @@ class FinancialProduct(Base):
     closing_day = Column(Integer, nullable=True)
     due_day = Column(Integer, nullable=True)
     limit_amount = Column(Numeric(15, 2), nullable=True)  # Renamed from 'limit'
-    limit_single_payment = Column(Numeric(15, 2), nullable=True)
-    limit_installments = Column(Numeric(15, 2), nullable=True)
-    shared_limit = Column(Boolean, default=False)
-    unified_limit = Column(Boolean, default=False)
     last_four_digits = Column(String(4), nullable=True)
     expiration_date = Column(DateTime(timezone=True), nullable=True)
     provider = Column(String(20), nullable=True)  # CardProvider

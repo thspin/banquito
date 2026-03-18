@@ -187,10 +187,6 @@ class FinancialProductBase(BaseSchema):
     closing_day: Optional[int] = Field(None, ge=1, le=31)
     due_day: Optional[int] = Field(None, ge=1, le=31)
     limit_amount: Optional[Decimal] = None
-    limit_single_payment: Optional[Decimal] = None
-    limit_installments: Optional[Decimal] = None
-    shared_limit: bool = False
-    unified_limit: bool = False
     last_four_digits: Optional[str] = Field(None, max_length=4)
     expiration_date: Optional[datetime] = None
     provider: Optional[str] = None
@@ -239,10 +235,6 @@ class FinancialProductUpdate(BaseSchema):
     closing_day: Optional[int] = Field(None, ge=1, le=31)
     due_day: Optional[int] = Field(None, ge=1, le=31)
     limit_amount: Optional[Decimal] = None
-    limit_single_payment: Optional[Decimal] = None
-    limit_installments: Optional[Decimal] = None
-    shared_limit: Optional[bool] = None
-    unified_limit: Optional[bool] = None
     last_four_digits: Optional[str] = Field(None, max_length=4)
     expiration_date: Optional[datetime] = None
     provider: Optional[str] = None
