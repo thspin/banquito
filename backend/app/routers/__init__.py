@@ -1,15 +1,7 @@
 """Routers module - API endpoints."""
 
-from app.routers import accounts
-from app.routers import transactions
-from app.routers import summaries
-from app.routers import services
-from app.routers import categories
+from app.routers import telegram
 
 __all__ = [
-    "accounts",
-    "transactions",
-    "summaries",
-    "services",
-    "categories",
+    "telegram",
 ]

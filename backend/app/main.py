@@ -112,13 +112,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Import and include routers FIRST (before catch-all routes)
-from app.routers import accounts, transactions, summaries, services, categories
+from app.routers import telegram
 
-app.include_router(accounts.router, prefix="/api")
-app.include_router(transactions.router, prefix="/api")
-app.include_router(summaries.router, prefix="/api")
-app.include_router(services.router, prefix="/api")
-app.include_router(categories.router, prefix="/api")
+app.include_router(telegram.router, prefix="/api/telegram")
 
 
 # Basic API routes

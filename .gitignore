@@ -39,6 +39,11 @@ ENV/
 .env
 .env.local
 .env.*.local
+.env.production
+
+# Secrets / tokens
+token.txt
+*.token
 
 # Database
 *.db
@@ -51,19 +56,6 @@ ENV/
 # Alembic
 alembic/versions/*.py
 !alembic/versions/.gitkeep
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-yarn.lock
-
-# Frontend build
-dist/
-dist-ssr/
-*.local
 
 # Coverage
 htmlcov/

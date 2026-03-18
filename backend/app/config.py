@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     CLERK_JWKS_URL: str = "https://brief-bee-17.clerk.accounts.dev/.well-known/jwks.json"
     CLERK_AUDIENCE: str = ""
     
+    # Telegram Bot
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_SECRET_TOKEN: str = ""
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
