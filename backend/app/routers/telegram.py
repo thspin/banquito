@@ -35,10 +35,21 @@ class TelegramUpdate(BaseModel):
     update_id: int
     message: Optional[Message] = None
 
-async def get_default_product(db: AsyncSession, user_id: uuid.UUID) -> Optional[FinancialProduct]:
-    """Get the first available financial product for the user to use as default."""
+async def get_or_create_default_product(db: AsyncSession, user_id: uuid.UUID) -> FinancialProduct:
+    """Get or auto-create a default 'Efectivo' product for the user."""
     result = await db.execute(select(FinancialProduct).where(FinancialProduct.user_id == user_id))
-    return result.scalars().first()
+    product = result.scalars().first()
+    if not product:
+        product = FinancialProduct(
+            name="Efectivo",
+            product_type="CASH",
+            currency="ARS",
+            user_id=user_id,
+        )
+        db.add(product)
+        await db.commit()
+        await db.refresh(product)
+    return product
 
 async def get_or_create_category(db: AsyncSession, user_id: uuid.UUID, name: str) -> Category:
     name = name.strip()
@@ -71,11 +82,7 @@ async def telegram_webhook(update: TelegramUpdate, request: Request, db: AsyncSe
         return {"status": "no_chat"}
 
     user_id = uuid.UUID(settings.CURRENT_USER_ID)
-    product = await get_default_product(db, user_id)
-    
-    if not product:
-        await send_telegram_message(chat_id, "⚠️ No tienes ninguna cuenta o billetera configurada en Banquito. Crea una primero.")
-        return {"status": "no_product"}
+    product = await get_or_create_default_product(db, user_id)
 
     transaction_svc = TransactionService(db)
 
@@ -183,12 +190,12 @@ async def telegram_webhook(update: TelegramUpdate, request: Request, db: AsyncSe
                         installments=1
                     )
                     await transaction_svc.create_transaction(t_create, user_id)
-                    await send_telegram_message(chat_id, f"✅ Gasto guardado: {description} por ${amount}")
+                    await send_telegram_message(chat_id, f"✅ Gasto guardado: *{description}* por ${amount:.0f} ({category_name})")
                 else:
                     await send_telegram_message(chat_id, "❌ No encontré el monto. Úsalo así: `Café 1500 Comida`")
             except Exception as e:
-                await send_telegram_message(chat_id, "❌ Error al guardar el gasto.")
-                print(e)
+                await send_telegram_message(chat_id, f"❌ Error al guardar el gasto: {str(e)[:200]}")
+                print(f"Transaction error: {e}")
         else:
             await send_telegram_message(chat_id, "❌ Formato incorrecto. Úsalo así: `Café 1500 Comida`")
             
