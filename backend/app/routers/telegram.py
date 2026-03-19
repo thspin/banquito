@@ -36,9 +36,24 @@ class TelegramUpdate(BaseModel):
     message: Optional[Message] = None
 
 async def get_or_create_default_product(db: AsyncSession, user_id: uuid.UUID) -> FinancialProduct:
-    """Get or auto-create a default 'Efectivo' product for the user."""
-    result = await db.execute(select(FinancialProduct).where(FinancialProduct.user_id == user_id))
+    """Get or auto-create a default product for the user.
+    Prefers simple accounts (CASH, SAVINGS_ACCOUNT, CHECKING_ACCOUNT) over cards.
+    """
+    # Prefer simple account types that have no special validation requirements
+    preferred_types = ["CASH", "SAVINGS_ACCOUNT", "CHECKING_ACCOUNT", "LOAN"]
+    result = await db.execute(
+        select(FinancialProduct)
+        .where(FinancialProduct.user_id == user_id)
+        .where(FinancialProduct.product_type.in_(preferred_types))
+    )
     product = result.scalars().first()
+
+    # Fallback to any product
+    if not product:
+        result = await db.execute(select(FinancialProduct).where(FinancialProduct.user_id == user_id))
+        product = result.scalars().first()
+
+    # Last resort: auto-create a Cash account
     if not product:
         product = FinancialProduct(
             name="Efectivo",
